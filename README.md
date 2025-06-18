@@ -1,7 +1,7 @@
 # lib2
-An C++ Extended Standard Library.
+An extended C++ standard library.
 
-This project is a long continuation of adding useful features to a C++ developer's tool belt that utilize cutting edge C++ versions and techniques. Many useful features that the standard cannot have due to its constraints will be here. Upgrades to existing standard libraries will also be here, as a way to test out what a std2 might be like.
+This project is dedicated to adding useful features for C++ developers that utilize cutting edge C++ versions and techniques. Many useful features that the standard cannot have due to its constraints will be here. Upgrades to existing standard libraries will also be here, as a way to test out what a std2 might be like.
 
 Any of the public or private APIs here can change at a moments notice. All libraries, even those deemed "Done" are all experimental and serve the purpose of furthering whatever I choose them to be.
 
