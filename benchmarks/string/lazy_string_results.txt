@@ -1,0 +1,90 @@
+Default Constructor:
+-------------------------------------
+Benchmark    Time Iterations Multiple
+-------------------------------------
+string_view    5s  177139365 1.03    
+lazy_string    5s  174985422 1.02    
+string         5s  171591256 1.00    
+
+String Literal Construct SSO:
+-------------------------------------
+Benchmark    Time Iterations Multiple
+-------------------------------------
+string_view    5s  175217654 1.04
+lazy_string    5s  175215932 1.04
+string         5s  169026998 1.00
+
+String Literal Construct:
+-------------------------------------
+Benchmark    Time Iterations Multiple
+-------------------------------------
+lazy_string    5s  175284821 3.13
+string_view    5s  175017870 3.12
+string         5s   56076253 1.00
+
+Copying std::string SSO:
+-------------------------------------
+Benchmark    Time Iterations Multiple
+-------------------------------------
+lazy_string    5s  163906212 1.01
+string         5s  162834307 1.00
+
+Copying std::string:
+-------------------------------------
+Benchmark    Time Iterations Multiple
+-------------------------------------
+string         5s   50178533 1.14
+lazy_string    5s   43913684 1.00
+
+Moving std::string SSO:
+-------------------------------------
+Benchmark    Time Iterations Multiple
+-------------------------------------
+string         5s  172342838 1.06
+lazy_string    5s  163223968 1.00
+
+Moving std::string:
+-------------------------------------
+Benchmark    Time Iterations Multiple
+-------------------------------------
+string         5s  170087986 3.89
+lazy_string    5s   43777197 1.00
+
+Copy Constructor SSO:
+-----------------------------------------------
+Benchmark              Time Iterations Multiple
+-----------------------------------------------
+lazy_string_from_view    5s  174323387 1.07
+lazy_string              5s  167317918 1.02
+string                   5s  163261282 1.00
+
+Copy Constructor:
+-----------------------------------------------
+Benchmark              Time Iterations Multiple
+-----------------------------------------------
+lazy_string_from_view    5s  173413691 3.46
+lazy_string              5s  110802800 2.21
+string                   5s   50142456 1.00
+
+Move Constructor SSO:
+-----------------------------------------------
+Benchmark              Time Iterations Multiple
+-----------------------------------------------
+lazy_string              5s  173925329 1.01
+lazy_string_from_view    5s  173312080 1.01
+string                   5s  171620984 1.00
+
+Move Constructor:
+-----------------------------------------------
+Benchmark              Time Iterations Multiple
+-----------------------------------------------
+lazy_string              5s  173752363 1.02
+lazy_string_from_view    5s  172886922 1.02
+string                   5s  169557955 1.00
+
+Copying from std::format call:
+-------------------------------------
+Benchmark    Time Iterations Multiple
+-------------------------------------
+string         5s   10335794 1.18
+lazy_string    5s    8772668 1.00

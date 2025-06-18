@@ -1,0 +1,2 @@
+add_executable(lazy_string lazy_string.cpp)
+target_link_libraries(lazy_string PRIVATE lib2)
