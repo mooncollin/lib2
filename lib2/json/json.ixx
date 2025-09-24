@@ -1,0 +1,1 @@
+export module lib2.json;

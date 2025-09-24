@@ -9,3 +9,6 @@ target_link_libraries(io_string_write PRIVATE lib2)
 
 add_executable(fstream_write fstream_write.cpp)
 target_link_libraries(fstream_write PRIVATE lib2)
+
+add_executable(fstream_multiple_write fstream_multiple_write.cpp)
+target_link_libraries(fstream_multiple_write PRIVATE lib2)

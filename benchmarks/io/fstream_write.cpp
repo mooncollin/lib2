@@ -11,18 +11,13 @@ public:
 
     void setup() final
     {
-        const auto err {file.open(name())};
-        if (err)
-        {
-            lib2::test::fail(lib2::format("Cannot open file: {}", name()));
-        }
-
+        file.open(name());
         file.setbuf(nullptr, buf_size);
     }
 
     void operator()() final
     {
-        lib2::format_to(file, "Hello World! My name is {}\n", name());
+        file << "Hello World! My name is " << name() << '\n';
     }
 
     void tear_down() final
@@ -33,6 +28,34 @@ public:
 private:
     std::size_t buf_size;
     lib2::ofstream file;
+};
+
+class lib2_async_buf : public lib2::benchmarking::benchmark
+{
+public:
+    lib2_async_buf(std::size_t buf_size)
+        : lib2::benchmarking::benchmark{lib2::format("lib2_async_fstream ({} KB)", buf_size / 1024)}
+        , buf_size{buf_size} {}
+
+    void setup() final
+    {
+        file.open(name());
+        file.setbuf(buf_size);
+    }
+
+    void operator()() final
+    {
+        file << "Hello World! My name is " << name() << '\n';
+    }
+
+    void tear_down() final
+    {
+        file.close();
+        std::filesystem::remove(name());
+    }
+private:
+    std::size_t buf_size;
+    lib2::async_ofstream file;
 };
 
 int main()
@@ -48,7 +71,17 @@ int main()
     lib2_buf b7 {262144};
     lib2_buf b8 {1048576};
 
+    lib2_async_buf ba1 {4096};
+    lib2_async_buf ba2 {8192};
+    lib2_async_buf ba3 {16384};
+    lib2_async_buf ba4 {32768};
+    lib2_async_buf ba5 {65536};
+    lib2_async_buf ba6 {131072};
+    lib2_async_buf ba7 {262144};
+    lib2_async_buf ba8 {1048576};
+
     lib2::benchmarking::print_benchmarks(ctx,
-        b1, b2, b3, b4, b5, b6, b7, b8
+        b1, b2, b3, b4, b5, b6, b7, b8,
+        ba1, ba2, ba3, ba4, ba5, ba6, ba7, ba8
     );
 }

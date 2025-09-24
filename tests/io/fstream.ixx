@@ -67,6 +67,7 @@ namespace lib2::tests::io
         {
             lib2::ofstream file {write_test_name};
             file.write(test_contents.data(), test_contents.size());
+            file.flush();
         }
     };
 
@@ -79,7 +80,7 @@ namespace lib2::tests::io
 
         void operator()() final
         {
-            lib2::wofstream file {wwrite_test_name, lib2::openmode::binary};
+            lib2::wofstream file {wwrite_test_name};
             file.write(wtest_contents.data(), wtest_contents.size());
         }
     };

@@ -1,8 +1,14 @@
 add_executable(lib2_tests lib2_tests.cpp)
 
 target_link_libraries(lib2_tests
-    PRIVATE
-        lib2
+PRIVATE
+    lib2
+)
+
+target_sources(lib2_tests
+PUBLIC
+FILE_SET CXX_MODULES FILES
+	compact_optional.ixx
 )
 
 add_subdirectory(type_traits)
@@ -10,11 +16,6 @@ add_subdirectory(strings)
 add_subdirectory(io)
 add_subdirectory(fmt)
 # add_subdirectory(match)
-
-target_sources(lib2_tests PUBLIC
-  FILE_SET lib2_tests_compact_optional_modules TYPE CXX_MODULES FILES
-    compact_optional.ixx
-)
 
 set(GENERATED_TESTS_FILE "${CMAKE_CURRENT_BINARY_DIR}/generated_tests.cmake")
 
