@@ -292,8 +292,7 @@ namespace lib2
 
         constexpr void write(const char_type* s, size_type count) override
         {
-            const auto written {this->pcur() - this->pbeg()};
-            if ((written + count) > buf.capacity())
+            if ((this->amount_written() + count) > buf.capacity())
             {
                 resize_str(count);
             }
@@ -304,8 +303,7 @@ namespace lib2
 
         constexpr void fill(const char_type& ch, size_type count) override
         {
-            const auto written {this->pcur() - this->pbeg()};
-            if ((written + count) > buf.capacity())
+            if ((this->amount_written() + count) > buf.capacity())
             {
                 resize_str(count);
             }
@@ -319,6 +317,11 @@ namespace lib2
             std::swap(buf, other.buf);
             basic_ostream<CharT>::swap(other);
         }
+    protected:
+        constexpr void overflow(CharT ch) override
+        {
+            write(&ch, 1);
+        }
     private:
         std::basic_string<CharT, Traits, Allocator> buf;
 
@@ -331,7 +334,7 @@ namespace lib2
         constexpr void resize_str(const size_type count)
         {
             // Turn capacity into size. Make the data "real"
-            const auto written {this->pcur() - this->pbeg()};
+            const auto written {this->amount_written()};
             buf.resize_and_overwrite(buf.capacity(), [&](const auto, const auto) {
                 return written;
             });

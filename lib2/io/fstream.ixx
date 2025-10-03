@@ -136,42 +136,50 @@ namespace lib2
 
         void close();
 
-        void setbuf(CharT* const s, const size_type size)
+        void setbuf(CharT* s, size_type size)
         {
-            if (!s)
+            if (s)
             {
                 if (buf)
                 {
                     delete[] buf.ptr();
-                }
-
-                if (size == 0)
-                {
-                    this->setp(nullptr, nullptr);
                     buf = nullptr;
-                }
-                else
-                {
-                    buf = new CharT[size];
-                    this->setp(buf.ptr(), buf.ptr() + size);
                 }
             }
             else
             {
-                this->setp(s, s + size);
-                if (buf)
+                if (size == 0)
                 {
-                    delete[] buf.ptr();
+                    if (buf)
+                    {
+                        delete[] buf.ptr();
+                        buf = nullptr;
+                    }
                 }
-                buf = nullptr;
+                else if (buf)
+                {
+                    if ((this->pend() - this->pbeg()) < size)
+                    {
+                        delete[] buf.ptr();
+                        buf = new CharT[size];
+                    }
+                }
+                else
+                {
+                    buf = new CharT[size];
+                }
+                s = buf.ptr();
             }
-            
+
+            this->setp(s, s + size);
             buf.tag(true);
         }
         
         void flush() override;
         void write(const CharT* s, size_type count) override;
         void fill(const CharT& ch, size_type count) override;
+    protected:
+        void overflow(CharT) override;
     private:
         tagged_pointer<CharT, 1> buf;
         void* handle;
@@ -401,6 +409,8 @@ namespace lib2
         void flush() override;
         void write(const CharT* s, size_type count) override;
         void fill(const CharT& ch, size_type count) override;
+    protected:
+        void overflow(CharT) override;
     private:
         async_io<CharT>* free_ios;
         async_io<CharT>* pending_ios;
@@ -422,11 +432,17 @@ namespace lib2
     extern inline text_ostream& cout;
     
     export
-    extern inline text_wostream& wcout;
+    extern inline wtext_ostream& wcout;
     
     export
     extern inline text_ostream& cerr;
 
     export
-    extern inline text_wostream& wcerr;
+    extern inline wtext_ostream& wcerr;
+
+    export
+    extern inline text_istream& cin;
+
+    export
+    extern inline wtext_istream& wcin;
 }

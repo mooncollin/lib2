@@ -2,19 +2,81 @@
 
 namespace lib2
 {
-    export
-    template<class CharT>
-    lib2::basic_text_ostream<CharT>& escape_codepoint(lib2::basic_text_ostream<CharT>& os, std::uint32_t codepoint)
+    template<std::ranges::view V>
+    struct escaped_t
     {
-        if (codepoint <= 0x7F)
+        V base;
+    };
+
+    export
+    template<std::ranges::input_range R>
+    constexpr auto escaped(R&& r)
+    {
+        return escaped_t{std::ranges::views::all(std::forward<R>(r))};
+    }
+
+    export
+    template<class CharT, class V>
+    basic_text_ostream<CharT>& operator<<(basic_text_ostream<CharT>& os, const escaped_t<V>& e)
+    {
+        basic_format_context<CharT> dummy_ctx {os, make_format_args<CharT>()};
+
+        constexpr auto codepoint_formatter {[] {
+            formatter<std::uint32_t, CharT> fmt;
+            fmt.set_base(16);
+            return fmt;
+        }()};
+
+        constexpr auto invalid_formatter{[] {
+            formatter<std::uint32_t, CharT> fmt;
+            fmt.set_base(16);
+            fmt.set_align(fill_align_parser<CharT>::align_type::right);
+            fmt.set_fill('0');
+            fmt.set_width(2);
+            return fmt;
+        }()};
+
+        os.put('"');
+
+        const auto utf_view {views::utf_codepoints(e.base)};
+        for (auto it {utf_view.begin()}; it != utf_view.end(); ++it)
         {
-            os.put(static_cast<CharT>(codepoint));
-        }
-        else
-        {
-            format_to(os, STATICALLY_WIDEN(CharT, "\\u{:x}"), codepoint);
+            switch (*it)
+            {
+            case '\t':
+                os << STATICALLY_WIDEN(CharT, "\\t");
+                break;
+            case '\n':
+                os << STATICALLY_WIDEN(CharT, "\\n");
+                break;
+            case '\r':
+                os << STATICALLY_WIDEN(CharT, "\\r");
+                break;
+            case '"':
+                os << STATICALLY_WIDEN(CharT, "\\\"");
+                break;
+            case '\\':
+                os << STATICALLY_WIDEN(CharT, "\\\\");
+                break;
+            default:
+                if (it.is_invalid())
+                {
+                    os << STATICALLY_WIDEN(CharT, "\\x");
+                    invalid_formatter.format(*it, dummy_ctx);
+                }
+                else if (*it <= 0x7F)
+                {
+                    os << static_cast<CharT>(*it);
+                }
+                else
+                {
+                    os << STATICALLY_WIDEN(CharT, "\\\u");
+                    codepoint_formatter.format(*it, dummy_ctx);
+                }
+            }
         }
 
+        os.put('"');
         return os;
     }
 
@@ -23,18 +85,20 @@ namespace lib2
     struct formatter<std::basic_string_view<CharT, Traits>, CharT> : public fill_align_parser<CharT>, public width_parser<CharT>, public precision_parser<CharT>
     {
     public:
-        [[nodiscard]] constexpr bool is_debug_formatting() const noexcept
+        [[nodiscard]] constexpr bool is_debug_format() const noexcept
         {
             return debug;
         }
 
-        constexpr void set_debug_formatting(const bool d = true) noexcept
+        constexpr void set_debug_format(const bool d = true) noexcept
         {
             debug = d;
         }
 
         constexpr auto parse(basic_format_parse_context<CharT>& ctx)
         {
+            debug = false;
+
             auto it {fill_align_parser<CharT>::parse(ctx)};
             ctx.advance_to(it);
             it = width_parser<CharT>::parse(ctx);
@@ -59,62 +123,33 @@ namespace lib2
 
         void format(std::basic_string_view<CharT, Traits> str, basic_format_context<CharT>& ctx) const
         {
-            do_format(str, ctx, std::allocator<CharT>{});
+            do_format(str, ctx);
         }
     protected:
-        template<class Allocator>
-        void do_format(std::basic_string_view<CharT, Traits> str, basic_format_context<CharT>& ctx, const Allocator a) const
+        template<class Allocator = std::allocator<CharT>>
+        void do_format(std::basic_string_view<CharT, Traits> str, basic_format_context<CharT>& ctx, const Allocator a = {}) const
         {
-            const utf8_codepoint_view utf8_view {str};
+            auto utf_view {views::utf_codepoints(str)};
             const auto precision {this->get_precision(ctx)};
 
             if (precision)
             {
-                auto utf8_it {utf8_view.begin()};
-                std::ranges::advance(utf8_it, *precision, utf8_view.end());
-                const auto leftover {utf8_it.leftover()};
+                auto utf_it {utf_view.begin()};
+                std::ranges::advance(utf_it, *precision, utf_view.end());
+                const auto leftover {utf_it.leftover()};
                 str.remove_prefix(str.size() - std::basic_string_view<CharT, Traits>{leftover.begin(), leftover.end()}.size());
             }
 
-            lib2::basic_ostringstream<CharT, Traits> debug_str;
+            utf_view = views::utf_codepoints(str);
+
+            lib2::basic_ostringstream<CharT, Traits, Allocator> debug_str{a};
             if (debug)
             {
-                debug_str.put('"');
-                for (auto it {utf8_view.begin()}; it != utf8_view.end(); ++it)
-                {
-                    switch (*it)
-                    {
-                    case '\t':
-                        debug_str << STATICALLY_WIDEN(CharT, "\\t");
-                        break;
-                    case '\n':
-                        debug_str << STATICALLY_WIDEN(CharT, "\\n");
-                        break;
-                    case '\r':
-                        debug_str << STATICALLY_WIDEN(CharT, "\\r");
-                        break;
-                    case '"':
-                        debug_str << STATICALLY_WIDEN(CharT, "\\\"");
-                        break;
-                    case '\\':
-                        debug_str << STATICALLY_WIDEN(CharT, "\\\\");
-                        break;
-                    default:
-                        if (it.is_invalid())
-                        {
-                            format_to(debug_str, STATICALLY_WIDEN(CharT, "\\x{:>02x}"), *it);
-                        }
-                        else
-                        {
-                            escape_codepoint(debug_str, *it);
-                        }
-                    }
-                }
-                debug_str.put('"');
+                debug_str << escaped(str);
                 str = debug_str.view();
             }
 
-            const auto size {std::ranges::distance(utf8_view)};
+            const auto size {std::ranges::distance(utf_view)};
             const auto width {this->get_width(ctx)};
             auto& os {ctx.stream()};
 

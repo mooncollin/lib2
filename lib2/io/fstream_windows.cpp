@@ -6,7 +6,9 @@ module;
 
 module lib2.io;
 
-import lib2.locatable_object;
+import std;
+
+import lib2.utility;
 
 import :fstream;
 
@@ -70,11 +72,6 @@ namespace lib2
         }
     }
 
-    static void io_write_console(const HANDLE handle, const std::byte* data, std::size_t size)
-    {
-        return io_write_console(handle, reinterpret_cast<const char*>(data), size);   
-    }
-
     static void io_write_console(const HANDLE handle, const wchar_t* data, std::size_t size)
     {
         while (size)
@@ -89,6 +86,11 @@ namespace lib2
             data += written;
             size -= written;
         }
+    }
+
+    static void io_write_console(const HANDLE handle, const std::byte* data, std::size_t size)
+    {
+        return io_write_console(handle, reinterpret_cast<const char*>(data), size);   
     }
 
     template<class CharT>
@@ -115,9 +117,59 @@ namespace lib2
         }
     }
 
-    template<class CharT>
-    std::size_t io_read(const HANDLE handle, CharT* data, std::size_t size)
+    static std::size_t io_read_console(const HANDLE handle, char* data, std::size_t size)
     {
+        std::size_t amount_read {0};
+        while (size)
+        {
+            const auto chunk {static_cast<DWORD>(std::min<std::size_t>(size, std::numeric_limits<DWORD>::max()))};
+            DWORD read {0};
+            if (!ReadConsoleA(handle, data, chunk, &read, nullptr))
+            {
+                throw std::system_error{static_cast<int>(GetLastError()), std::system_category(), "Write console failed"};
+            }
+
+            data += read;
+            size -= read;
+            amount_read += read;
+        }
+
+        return amount_read;
+    }
+
+    static std::size_t io_read_console(const HANDLE handle, wchar_t* data, std::size_t size)
+    {
+        std::size_t amount_read {0};
+        while (size)
+        {
+            const auto chunk {static_cast<DWORD>(std::min<std::size_t>(size, std::numeric_limits<DWORD>::max()))};
+            DWORD read {0};
+            if (!ReadConsoleW(handle, data, chunk, &read, nullptr))
+            {
+                throw std::system_error{static_cast<int>(GetLastError()), std::system_category(), "Write console failed"};
+            }
+
+            data += read;
+            size -= read;
+            amount_read += read;
+        }
+
+        return amount_read;
+    }
+
+    static std::size_t io_read_console(const HANDLE handle, std::byte* const data, const std::size_t size)
+    {
+        return io_read_console(handle, reinterpret_cast<char*>(data), size);
+    }
+
+    template<class CharT>
+    static std::size_t io_read(const HANDLE handle, CharT* data, std::size_t size)
+    {
+        if (is_console(handle))
+        {
+            return io_read_console(handle, data, size);
+        }
+
         size *= sizeof(CharT);
         std::size_t total_read {0};
         while (size)
@@ -142,7 +194,7 @@ namespace lib2
         return total_read / sizeof(CharT);
     }
 
-    void io_seek(const HANDLE handle, const std::int64_t offset, const seek_mode origin)
+    static void io_seek(const HANDLE handle, const std::int64_t offset, const seek_mode origin)
     {
         LARGE_INTEGER li;
         li.QuadPart = offset;
@@ -152,7 +204,7 @@ namespace lib2
         }
     }
 
-    HANDLE io_open(const std::filesystem::path::string_type::value_type* const filename, const DWORD access, const DWORD flags = FILE_ATTRIBUTE_NORMAL)
+    static HANDLE io_open(const std::filesystem::path::string_type::value_type* const filename, const DWORD access, const DWORD flags = FILE_ATTRIBUTE_NORMAL)
     {
         const auto handle {
             CreateFileW(
@@ -173,7 +225,7 @@ namespace lib2
         return handle;
     }
 
-    void io_close(const HANDLE handle)
+    static void io_close(const HANDLE handle)
     {
         if (!CloseHandle(handle))
         {
@@ -207,7 +259,7 @@ namespace lib2
     }
 
     template<class CharT>
-    bool io_async_done(const HANDLE handle, async_io<CharT>& aio, const bool wait)
+    static bool io_async_done(const HANDLE handle, async_io<CharT>& aio, const bool wait)
     {
         for (auto& ov : aio.ov)
         {
@@ -235,7 +287,7 @@ namespace lib2
     }
 
     template<class CharT>
-    async_io<CharT>& io_async_get(const HANDLE handle, const std::size_t size, async_io<CharT>*& free_ios, async_io<CharT>*& pending_ios)
+    static async_io<CharT>& io_async_get(const HANDLE handle, const std::size_t size, async_io<CharT>*& free_ios, async_io<CharT>*& pending_ios)
     {
         // First, clean up any completed IOs
         for (auto it {pending_ios}, prev {(async_io<CharT>*) nullptr}; it;)
@@ -399,6 +451,35 @@ namespace lib2
             {
                 io_write(handle, &ch, 1);
             }
+        }
+    }
+
+    template<class CharT>
+    void basic_ofstream<CharT>::overflow(const CharT ch)
+    {
+        if (!is_open())
+        {
+            throw std::logic_error{"File not open"};
+        }
+
+        if (!buf.tag())
+        {
+            setbuf(nullptr, default_buffer_size);
+        }
+
+        if (this->is_buffered())
+        {
+            if (!this->write_available())
+            {
+                flush();
+            }
+
+            *this->pcur() = ch;
+            this->pbump(1);
+        }
+        else
+        {
+            io_write(handle, &ch, 1);
         }
     }
 
@@ -662,93 +743,103 @@ namespace lib2
     }
 
     template<class CharT>
-    class basic_stdofstream final : public basic_ostream<CharT>
+    void basic_async_ofstream<CharT>::overflow(const CharT ch)
+    {
+        if (!this->write_available())
+        {
+            if (this->amount_written())
+            {
+                io_async_add_pending(free_ios, pending_ios);
+                io_async_write(handle, *pending_ios, pending_ios->capacity, offset);
+                offset += pending_ios->capacity;
+                this->setp(nullptr, nullptr);
+            }
+
+            auto& aio {io_async_get(handle, default_buf_cap, free_ios, pending_ios)};
+            this->setp(aio.buffer, aio.buffer + aio.capacity);
+        }
+        
+        *this->pcur() = ch;
+        this->pbump(1);
+    }
+
+    template<class CharT>
+    class basic_stdostream final : public basic_ostream<CharT>
     {
     public:
         using size_type = typename basic_ostream<CharT>::size_type;
 
-        basic_stdofstream(const HANDLE handle)
-            : cur{buf}, handle{handle}
+        basic_stdostream(const HANDLE handle) noexcept
+            : handle{handle}, cur{buf} {}
+
+        ~basic_stdostream() noexcept
         {
-            if (handle == INVALID_HANDLE_VALUE)
+            try
             {
-                throw std::system_error{static_cast<int>(GetLastError()), std::system_category(), "Invalid handle"};
+                flush();
             }
+            catch (...) {}
         }
 
         void write(const CharT* s, size_type count) override
         {
-            if (handle)
+            const auto og_s {s};
+            const auto og_count {count};
+
+            // If we have stuff in our buffer, write
+            // what we can to that buffer and flush.
+            if (amount_written())
             {
-                // If we have stuff in our buffer, write
-                // what we can to that buffer and flush.
-                if (amount_written())
-                {
-                    const auto amount {std::min(count, write_available())};
-                    std::copy_n(s, amount, cur);
-                    cur += amount;
-                    count -= amount;
-                    s += amount;
-                    if (count)
-                    {
-                        flush();
-                    }
-                    else
-                    {
-                        const auto iter {std::find(buf, cur, CharT{'\n'})};
-                        if (iter != cur)
-                        {
-                            flush();
-                        }
-                    }
-                }
-
-                // Check to see if remaining data can fit in the buffer.
-                if (count && count <= write_available())
-                {
-                    std::copy_n(s, count, cur);
-                    cur += count;
-                    const auto iter {std::find(buf, cur, CharT{'\n'})};
-                    if (iter != cur)
-                    {
-                        flush();
-                    }
-                    return;
-                }
-
+                const auto amount {std::min(count, write_available())};
+                cur = std::copy_n(s, amount, cur);
+                count -= amount;
+                s += amount;
                 if (count)
+                {
+                    flush();
+                }
+            }
+
+            if (count)
+            {
+                if (count <= write_available())
+                {
+                    cur = std::copy_n(s, count, cur);
+                }
+                else
                 {
                     io_write(handle, s, count);
                 }
+            }
+
+            if (std::char_traits<CharT>::find(og_s, og_count, '\n'))
+            {
+                flush();
             }
         }
 
         void fill(const CharT& ch, size_type count) override
         {
-            if (handle)
+            while (count)
             {
-                while (count)
+                // If we have stuff in our buffer, write
+                // what we can to that buffer and flush.
+                if (auto amount {this->write_available()}; amount)
                 {
-                    // If we have stuff in our buffer, write
-                    // what we can to that buffer and flush.
-                    if (auto amount {this->write_available()}; amount)
-                    {
-                        amount = std::min(count, amount);
-                        std::fill_n(cur, amount, ch);
-                        cur += amount;
-                        count -= amount;
-                    }
-                    
-                    if (count)
-                    {
-                        flush();
-                    }
+                    amount = std::min(count, amount);
+                    cur = std::fill_n(cur, amount, ch);
+                    count -= amount;
                 }
                 
-                if (ch == CharT{'\n'})
+                if (count)
                 {
                     flush();
                 }
+            }
+            
+            if (ch == '\n')
+            {
+                flush();
             }
         }
 
@@ -760,19 +851,20 @@ namespace lib2
                 cur = buf;
             }
         }
-
-        ~basic_stdofstream() noexcept
+        
+        void overflow(const CharT ch) override
         {
-            try
+            if (!this->write_available())
             {
                 flush();
             }
-            catch (...) {}
+
+            *cur++ = ch;
+            if (ch == '\n')
+            {
+                flush();
+            }
         }
-    private:
-        CharT buf[4092];
-        CharT* cur;
-        HANDLE handle;
 
         [[nodiscard]] constexpr size_type write_available() const noexcept
         {
@@ -783,29 +875,289 @@ namespace lib2
         {
             return static_cast<size_type>(cur - buf);
         }
+    private:
+        CharT buf[4096];
+        HANDLE handle;
+        CharT* cur;
     };
 
-    // They are initialized in lambas to avoid static initialization order fiasco
-    // They are intialized via placement new to avoid destruction order fiasco
-    text_ostream& cout = [] -> text_ostream& {
-        static locatable_object<basic_stdofstream<char>> obj;
-        return obj.start_lifetime(GetStdHandle(STD_OUTPUT_HANDLE));
-    }();
-    
-    text_wostream& wcout = [] -> text_wostream& {
-        static locatable_object<basic_stdofstream<wchar_t>> obj;
-        return obj.start_lifetime(GetStdHandle(STD_OUTPUT_HANDLE));
-    }();
+    template<class CharT>
+    class basic_stdistream final : public basic_istream<CharT>
+    {
+    public:
+        using opt_type = typename basic_istream<CharT>::opt_type;
 
-    text_ostream& cerr = [] -> text_ostream& {
-        static locatable_object<basic_stdofstream<char>> obj;
-        return obj.start_lifetime(GetStdHandle(STD_ERROR_HANDLE));
-    }();
+        basic_stdistream(const HANDLE handle) noexcept
+            : handle{handle}
+        {
+            this->setg(buf, buf, buf + sizeof(buf));
+        }
 
-    text_wostream& wcerr = [] -> text_wostream& {
-        static locatable_object<basic_stdofstream<wchar_t>> obj;
-        return obj.start_lifetime(GetStdHandle(STD_ERROR_HANDLE));
-    }();
+        std::size_t read(CharT* s, std::size_t count) override
+        {
+            std::size_t read_count {std::min(count, this->read_available())};
+
+            if (read_count)
+            {
+                std::copy_n(this->gcur(), read_count, s);
+                this->gbump(read_count);
+                count -= read_count;
+                s += read_count;
+            }
+
+            // If the request is larger than our buffer capacity,
+            // just read directly into the user buffer.
+
+            if (count)
+            {
+                if (count >= sizeof(buf))
+                {
+                    read_count += io_read(handle, s, count);
+                }
+                else
+                {
+                    underflow();
+                    std::copy_n(s, count, this->gcur());
+                    this->gbump(count);
+                    read_count += count;
+                }
+            }
+
+            return read_count;
+        }
+    protected:
+        opt_type underflow() override
+        {
+            const auto amount {io_read(handle, buf, sizeof(buf))};
+            if (amount)
+            {
+                this->setg(buf, buf, buf + amount);
+                return buf[0];
+            }
+
+            return {};
+        }
+    private:
+        CharT buf[4096];
+        HANDLE handle;
+    };
+
+    // For when GetStdHandle gives NULL or an invalid handle
+    template<class CharT>
+    class basic_null_stdostream final : public basic_ostream<CharT>
+    {
+    public:
+        basic_null_stdostream(std::error_code ec) noexcept
+            : ec{std::move(ec)} {}
+    protected:
+        void overflow(const CharT) override
+        {
+            throw std::system_error{ec};
+        }
+    private:
+        std::error_code ec;
+    };
+
+    template<class CharT>
+    class basic_null_stdistream final : public basic_istream<CharT>
+    {
+    public:
+        using opt_type = typename basic_istream<CharT>::opt_type;
+
+        basic_null_stdistream(std::error_code ec) noexcept
+            : ec{std::move(ec)} {}
+    protected:
+        opt_type underflow() override
+        {
+            throw std::system_error{ec};
+        }
+    private:
+        std::error_code ec;
+    };
+
+    struct io_init
+    {
+        io_init() noexcept
+        {
+            const auto null_err {std::make_error_code(std::errc::no_such_device)};
+            
+            const auto out_handle {GetStdHandle(STD_OUTPUT_HANDLE)};
+
+            if (!out_handle)
+            {
+                cout_.emplace<basic_null_stdostream<char>>(null_err);
+                wcout_.emplace<basic_null_stdostream<wchar_t>>(null_err);
+            }
+            else if (out_handle == INVALID_HANDLE_VALUE)
+            {
+                const auto win_err {static_cast<int>(GetLastError())};
+                cout_.emplace<basic_null_stdostream<char>>(std::error_code(win_err, std::system_category()));
+                wcout_.emplace<basic_null_stdostream<wchar_t>>(std::error_code(win_err, std::system_category()));
+            }
+            else
+            {
+                cout_.emplace<basic_stdostream<char>>(out_handle);
+                wcout_.emplace<basic_stdostream<wchar_t>>(out_handle);
+            }
+
+            const auto err_handle {GetStdHandle(STD_ERROR_HANDLE)};
+
+            if (!err_handle)
+            {
+                cerr_.emplace<basic_null_stdostream<char>>(null_err);
+                wcerr_.emplace<basic_null_stdostream<wchar_t>>(null_err);
+            }
+            else if (err_handle == INVALID_HANDLE_VALUE)
+            {
+                const auto win_err {static_cast<int>(GetLastError())};
+                cerr_.emplace<basic_null_stdostream<char>>(std::error_code(win_err, std::system_category()));
+                wcerr_.emplace<basic_null_stdostream<wchar_t>>(std::error_code(win_err, std::system_category()));
+            }
+            else
+            {
+                cerr_.emplace<basic_stdostream<char>>(err_handle);
+                wcerr_.emplace<basic_stdostream<wchar_t>>(err_handle);
+            }
+
+            const auto in_handle {GetStdHandle(STD_INPUT_HANDLE)};
+
+            if (!in_handle)
+            {
+                cin_.emplace<basic_null_stdistream<char>>(null_err);
+                wcin_.emplace<basic_null_stdistream<wchar_t>>(null_err);
+            }
+            else if (in_handle == INVALID_HANDLE_VALUE)
+            {
+                const auto win_err {static_cast<int>(GetLastError())};
+                cin_.emplace<basic_null_stdistream<char>>(std::error_code(win_err, std::system_category()));
+                wcin_.emplace<basic_null_stdistream<wchar_t>>(std::error_code(win_err, std::system_category()));
+            }
+            else
+            {
+                cin_.emplace<basic_stdistream<char>>(in_handle);
+                wcin_.emplace<basic_stdistream<wchar_t>>(in_handle);
+            }
+        }
+
+        text_ostream& get_cout() noexcept
+        {
+            return *std::visit(overloaded {
+                [](text_ostream& os) -> text_ostream* {
+                    return &os;
+                },
+                [](std::monostate) -> text_ostream* {
+                    return nullptr;
+                }
+            }, cout_);
+        }
+
+        wtext_ostream& get_wcout() noexcept
+        {
+            return *std::visit(overloaded {
+                [](wtext_ostream& os) -> wtext_ostream* {
+                    return &os;
+                },
+                [](std::monostate) -> wtext_ostream* {
+                    return nullptr;
+                }
+            }, wcout_);
+        }
+
+        text_ostream& get_cerr() noexcept
+        {
+            return *std::visit(overloaded {
+                [](text_ostream& os) -> text_ostream* {
+                    return &os;
+                },
+                [](std::monostate) -> text_ostream* {
+                    return nullptr;
+                }
+            }, cerr_);
+        }
+
+        wtext_ostream& get_wcerr() noexcept
+        {
+            return *std::visit(overloaded {
+                [](wtext_ostream& os) -> wtext_ostream* {
+                    return &os;
+                },
+                [](std::monostate) -> wtext_ostream* {
+                    return nullptr;
+                }
+            }, wcerr_);
+        }
+
+        text_istream& get_cin() noexcept
+        {
+            return *std::visit(overloaded {
+                [](text_istream& os) -> text_istream* {
+                    return &os;
+                },
+                [](std::monostate) -> text_istream* {
+                    return nullptr;
+                }
+            }, cin_);
+        }
+
+        wtext_istream& get_wcin() noexcept
+        {
+            return *std::visit(overloaded {
+                [](wtext_istream& os) -> wtext_istream* {
+                    return &os;
+                },
+                [](std::monostate) -> wtext_istream* {
+                    return nullptr;
+                }
+            }, wcin_);
+        }
+
+        std::variant<
+            std::monostate,
+            basic_stdostream<char>,
+            basic_null_stdostream<char>
+        > cout_;
+
+        std::variant<
+            std::monostate,
+            basic_stdostream<wchar_t>,
+            basic_null_stdostream<wchar_t>
+        > wcout_;
+
+        std::variant<
+            std::monostate,
+            basic_stdostream<char>,
+            basic_null_stdostream<char>
+        > cerr_;
+
+        std::variant<
+            std::monostate,
+            basic_stdostream<wchar_t>,
+            basic_null_stdostream<wchar_t>
+        > wcerr_;
+
+        std::variant<
+            std::monostate,
+            basic_stdistream<char>,
+            basic_null_stdistream<char>
+        > cin_;
+
+        std::variant<
+            std::monostate,
+            basic_stdistream<wchar_t>,
+            basic_null_stdistream<wchar_t>
+        > wcin_;
+    };
+
+    inline io_init init_;
+
+    text_ostream& cout   {init_.get_cout()};
+    wtext_ostream& wcout {init_.get_wcout()};
+
+    text_ostream& cerr   {init_.get_cerr()};
+    wtext_ostream& wcerr {init_.get_wcerr()};
+
+    text_istream& cin   {init_.get_cin()};
+    wtext_istream& wcin {init_.get_wcin()};
 
     template basic_ofstream<char>;
     template basic_ofstream<wchar_t>;

@@ -7,6 +7,7 @@ export module lib2.fmt:format;
 import std;
 
 import lib2.type_traits;
+import lib2.concepts;
 import lib2.utility;
 import lib2.strings;
 import lib2.io;
@@ -371,6 +372,9 @@ namespace lib2
     class basic_format_args
     {
     public:
+        constexpr basic_format_args() noexcept
+            : num_args{0} {}
+
         template<class... Args>
         constexpr basic_format_args(const format_arg_store<CharT, Args...>& store) noexcept
             : args_{store.args.data()}
@@ -1000,7 +1004,7 @@ namespace lib2
     }
 
     export
-    inline text_wostream& vformat_to(text_wostream& os, const std::wstring_view fmt, const wformat_args args)
+    inline wtext_ostream& vformat_to(wtext_ostream& os, const std::wstring_view fmt, const wformat_args args)
     {
         wformat_parse_context parse_ctx {fmt, args.size()};
         do_format(parse_ctx, wformat_context{os, args});
@@ -1016,7 +1020,7 @@ namespace lib2
     }
 
     export
-    inline text_wostream& vformat_to(text_wostream& os, const std::locale& loc, const std::wstring_view fmt, const wformat_args args)
+    inline wtext_ostream& vformat_to(wtext_ostream& os, const std::locale& loc, const std::wstring_view fmt, const wformat_args args)
     {
         wformat_parse_context parse_ctx {fmt, args.size()};
         do_format(parse_ctx, wformat_context{os, loc, args});
@@ -1068,7 +1072,7 @@ namespace lib2
 
     export
     template<class... Args>
-    inline text_wostream& format_to(text_wostream& os, const wformat_string<Args...> fmt, const Args&... args)
+    inline wtext_ostream& format_to(wtext_ostream& os, const wformat_string<Args...> fmt, const Args&... args)
     {
         return vformat_to(os, fmt.get(), make_wformat_args(args...));
     }
@@ -1082,7 +1086,7 @@ namespace lib2
 
     export
     template<class... Args>
-    inline text_wostream& format_to(text_wostream& os, const std::locale& loc, const wformat_string<Args...> fmt, const Args&... args)
+    inline wtext_ostream& format_to(wtext_ostream& os, const std::locale& loc, const wformat_string<Args...> fmt, const Args&... args)
     {
         return vformat_to(os, loc, fmt.get(), make_wformat_args(args...));
     }
@@ -1156,3 +1160,4 @@ namespace lib2
 #include "string.ixx"
 #include "arithmetic.ixx"
 #include "misc.ixx"
+#include "ranges.ixx"

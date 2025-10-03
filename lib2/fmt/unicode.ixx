@@ -6,6 +6,7 @@ namespace lib2
 {
     export
     template<std::ranges::view V>
+        requires(std::convertible_to<std::remove_cvref_t<std::ranges::range_reference_t<V>>, char8_t>)
     class utf8_codepoint_view : public std::ranges::view_interface<utf8_codepoint_view<V>>
     {
     public:
@@ -57,15 +58,8 @@ namespace lib2
                 return {it_, end_};
             }
 
-            constexpr bool operator==(const sentinel other) const noexcept
-            {
-                return done;
-            }
-
-            constexpr bool operator!=(const sentinel other) const noexcept
-            {
-                return !done;
-            }
+            constexpr bool operator==(const sentinel) const noexcept { return done; }
+            constexpr bool operator!=(const sentinel) const noexcept { return !done; }
 
             constexpr friend bool operator==(const sentinel lhs, const iterator& rhs) noexcept
             {
@@ -92,49 +86,49 @@ namespace lib2
                     return;
                 }
 
-                const auto ch {static_cast<unsigned char>(*it_++)};
+                const char8_t b {static_cast<char8_t>(*it_++)};
 
-                if ((ch & 0x80) == 0)
+                if ((b & 0x80) == 0)
                 {
-                    codepoint = ch;
+                    codepoint = b;
                     return;
                 }
 
                 std::size_t num_bytes {0};
-                if ((ch & 0xE0) == 0xC0)
+                if ((b & 0xE0) == 0xC0)
                 {
                     num_bytes = 2;
                 }
-                else if ((ch & 0xF0) == 0xE0)
+                else if ((b & 0xF0) == 0xE0)
                 {
                     num_bytes = 3;
                 }
-                else if ((ch & 0xF8) == 0xF0)
+                else if ((b & 0xF8) == 0xF0)
                 {
                     num_bytes = 4;
                 }
                 else
                 {
                     invalid = true;
-                    codepoint = ch;
+                    codepoint = b;
                     return;
                 }
 
-                uint32_t cp = ch & ((1 << (8 - num_bytes - 1)) - 1);
+                uint32_t cp = b & ((1 << (8 - num_bytes - 1)) - 1);
                 for (std::size_t i {1}; i < num_bytes; ++i)
                 {
                     if (it_ == end_)
                     {
                         invalid = true;
-                        codepoint = ch;
+                        codepoint = b;
                         return;
                     }
 
-                    const auto next {static_cast<unsigned char>(*it_++)};
+                    const char8_t next {static_cast<char8_t>(*it_++)};
                     if ((next & 0xC0) != 0x80)
                     {
                         invalid = true;
-                        codepoint = ch;
+                        codepoint = b;
                         return;
                     }
 
@@ -149,7 +143,7 @@ namespace lib2
                    )
                 {
                     invalid = true;
-                    codepoint = ch;
+                    codepoint = b;
                     return;
                 }
 
@@ -171,6 +165,252 @@ namespace lib2
     };
 
     export
-    template<std::ranges::viewable_range R>
-    utf8_codepoint_view(R&&) -> utf8_codepoint_view<std::views::all_t<R>>;
+    template<std::ranges::view V>
+        requires (std::same_as<std::remove_cvref_t<std::ranges::range_reference_t<V>>, char16_t> ||
+                (std::same_as<std::remove_cvref_t<std::ranges::range_reference_t<V>>, wchar_t> && sizeof(wchar_t) == 2))
+    class utf16_codepoint_view : public std::ranges::view_interface<utf16_codepoint_view<V>>
+    {
+    public:
+        constexpr explicit utf16_codepoint_view(V base)
+            : base_{std::move(base)} {}
+
+        struct sentinel {};
+
+        class iterator
+        {
+        public:
+            using value_type        = std::uint32_t;
+            using difference_type   = std::ptrdiff_t;
+            using iterator_concept  = std::input_iterator_tag;
+
+            constexpr iterator() : done{true} {}
+
+            constexpr iterator(std::ranges::iterator_t<V> it, std::ranges::iterator_t<V> end)
+                : it_{std::move(it)}, end_{std::move(end)}
+            {
+                advance();
+            }
+
+            [[nodiscard]] constexpr value_type operator*() const noexcept
+            {
+                return codepoint;
+            }
+
+            constexpr iterator& operator++()
+            {
+                advance();
+                return *this;
+            }
+
+            constexpr void operator++(int) { advance(); }
+
+            [[nodiscard]] constexpr bool is_invalid() const noexcept
+            {
+                return invalid;
+            }
+
+            constexpr std::ranges::subrange<std::ranges::iterator_t<V>, std::ranges::sentinel_t<V>> leftover()
+            {
+                return {it_, end_};
+            }
+
+            constexpr bool operator==(sentinel) const noexcept { return done; }
+            constexpr bool operator!=(sentinel) const noexcept { return !done; }
+
+            friend constexpr bool operator==(sentinel, iterator const& rhs) noexcept { return rhs.done; }
+            friend constexpr bool operator!=(sentinel, iterator const& rhs) noexcept { return !rhs.done; }
+
+        private:
+            std::ranges::iterator_t<V> it_;
+            std::ranges::sentinel_t<V> end_;
+            std::uint32_t codepoint{0};
+            bool done{false};
+            bool invalid{false};
+
+            constexpr void advance()
+            {
+                invalid = false;
+                if (it_ == end_)
+                {
+                    done = true;
+                    return;
+                }
+
+                const char16_t lead {static_cast<char16_t>(*it_++)};
+
+                // Single-unit BMP code point (not surrogate)
+                if (lead < 0xD800 || lead > 0xDFFF)
+                {
+                    codepoint = lead;
+                    return;
+                }
+
+                // Surrogates
+                if (lead >= 0xD800 && lead <= 0xDBFF) // high surrogate
+                {
+                    if (it_ == end_)
+                    {
+                        invalid = true;
+                        codepoint = lead;
+                        return;
+                    }
+
+                    const char16_t trail = *it_;
+                    if (trail >= 0xDC00 && trail <= 0xDFFF)
+                    {
+                        ++it_;
+                        codepoint = 0x10000 + (((lead - 0xD800) << 10) | (trail - 0xDC00));
+                        return;
+                    }
+
+                    // Unpaired high surrogate
+                    invalid = true;
+                    codepoint = lead;
+                    return;
+                }
+
+                // Unpaired low surrogate
+                invalid = true;
+                codepoint = lead;
+            }
+        };
+
+        constexpr iterator begin() const
+        {
+            return {std::ranges::begin(base_), std::ranges::end(base_)};
+        }
+
+        constexpr sentinel end() const noexcept { return {}; }
+
+    private:
+        V base_;
+    };
+
+    export
+    template<std::ranges::view V>
+        requires (std::same_as<std::remove_cvref_t<std::ranges::range_reference_t<V>>, char32_t> ||
+                (std::same_as<std::remove_cvref_t<std::ranges::range_reference_t<V>>, wchar_t> && sizeof(wchar_t) == 4))
+    class utf32_codepoint_view : public std::ranges::view_interface<utf32_codepoint_view<V>>
+    {
+    public:
+        constexpr explicit utf32_codepoint_view(V base)
+            : base_{std::move(base)} {}
+
+        struct sentinel {};
+
+        class iterator
+        {
+        public:
+            using value_type        = std::uint32_t;
+            using difference_type   = std::ptrdiff_t;
+            using iterator_concept  = std::input_iterator_tag;
+
+            constexpr iterator() : done{true} {}
+
+            constexpr iterator(std::ranges::iterator_t<V> it, std::ranges::iterator_t<V> end)
+                : it_{std::move(it)}, end_{std::move(end)}
+            {
+                advance();
+            }
+
+            [[nodiscard]] constexpr value_type operator*() const noexcept
+            {
+                return codepoint;
+            }
+
+            constexpr iterator& operator++()
+            {
+                advance();
+                return *this;
+            }
+
+            constexpr void operator++(int) { advance(); }
+
+            [[nodiscard]] constexpr bool is_invalid() const noexcept
+            {
+                return invalid;
+            }
+
+            constexpr std::ranges::subrange<std::ranges::iterator_t<V>, std::ranges::sentinel_t<V>> leftover()
+            {
+                return {it_, end_};
+            }
+
+            constexpr bool operator==(sentinel) const noexcept { return done; }
+            constexpr bool operator!=(sentinel) const noexcept { return !done; }
+
+            friend constexpr bool operator==(sentinel, iterator const& rhs) noexcept { return rhs.done; }
+            friend constexpr bool operator!=(sentinel, iterator const& rhs) noexcept { return !rhs.done; }
+
+        private:
+            std::ranges::iterator_t<V> it_;
+            std::ranges::sentinel_t<V> end_;
+            std::uint32_t codepoint{0};
+            bool done{false};
+            bool invalid{false};
+
+            constexpr void advance()
+            {
+                invalid = false;
+                if (it_ == end_)
+                {
+                    done = true;
+                    return;
+                }
+
+                const char32_t unit {static_cast<char32_t>(*it_++)};
+                std::uint32_t cp = unit;
+
+                if (cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF))
+                {
+                    invalid = true;
+                }
+
+                codepoint = cp;
+            }
+        };
+
+        constexpr iterator begin() const
+        {
+            return {std::ranges::begin(base_), std::ranges::end(base_)};
+        }
+
+        constexpr sentinel end() const noexcept { return {}; }
+
+    private:
+        V base_;
+    };
+
+    namespace views
+    {
+        export
+        template<std::ranges::viewable_range R>
+        utf8_codepoint_view<std::views::all_t<R>> utf8_codepoints(R&& r)
+        {
+            return utf8_codepoint_view<std::views::all_t<R>>{std::ranges::views::all(std::forward<R>(r))};
+        }
+
+        export
+        template<std::ranges::viewable_range R>
+        auto utf_codepoints(R&& r)
+        {
+            using T = std::remove_cvref_t<std::ranges::range_value_t<R>>;
+            if constexpr (std::same_as<T, char> || std::same_as<T, char8_t> || std::same_as<T, std::byte>)
+            {
+                return utf8_codepoint_view{std::forward<R>(r)};
+            }
+            else if constexpr (std::same_as<T, char16_t> || (std::same_as<T, wchar_t> && sizeof(wchar_t)==2))
+            {
+                return utf16_codepoint_view{std::forward<R>(r)};
+            }
+            else if constexpr (std::same_as<T, char32_t> || (std::same_as<T, wchar_t> && sizeof(wchar_t)==4))
+            {
+                return utf32_codepoint_view{std::forward<R>(r)};
+            }
+            else
+            {
+                static_assert(false, "Unsupported character type for codepoint_view");
+            }
+        }
+    }
 }

@@ -1,4 +1,5 @@
 add_library(lib2 STATIC)
+target_compile_features(lib2 PUBLIC cxx_std_23)
 
 target_sources(lib2
 PUBLIC

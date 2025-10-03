@@ -5,10 +5,16 @@ import std;
 namespace lib2
 {
     export
-    template<class T, std::size_t Bits>
+    template<class T>
+    inline constexpr std::size_t tagged_pointer_max_bits {alignof(std::max_align_t) & ~(alignof(T) - 1)};
+
+    export
+    template<class T, std::size_t Bits = tagged_pointer_max_bits<T>>
     class tagged_pointer
     {
-        static_assert(Bits <= (alignof(std::max_align_t) & ~(alignof(T) - 1)), "Too many bits requested");
+        static_assert(Bits <= tagged_pointer_max_bits<T>, "Not enough bits supported");
+
+        static constexpr std::uintptr_t mask {std::uintptr_t{1} << Bits};
     public:
         tagged_pointer(T* ptr_ = nullptr) noexcept
             : ptr_{reinterpret_cast<std::uintptr_t>(ptr_)} {}
@@ -30,12 +36,12 @@ namespace lib2
 
         T* ptr() const noexcept
         {
-            return reinterpret_cast<T*>(ptr_ & ~((std::uintptr_t{1} << Bits) - 1));
+            return reinterpret_cast<T*>(ptr_ & ~(mask - 1));
         }
 
         void tag(const std::uintptr_t tag)
         {
-            if (tag >= (std::uintptr_t{1} << Bits))
+            if (tag >= mask)
             {
                 throw std::out_of_range{"Tag value out of range"};
             }
@@ -61,6 +67,13 @@ namespace lib2
         }
     private:
         std::uintptr_t ptr_;
+    };
+
+    export
+    template<class T>
+    class tagged_pointer<T, 0>
+    {
+
     };
 
     export

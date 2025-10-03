@@ -6,6 +6,8 @@ export module lib2.io:ostream;
 
 import std;
 
+import lib2.strings;
+
 import :character;
 
 namespace lib2
@@ -21,15 +23,25 @@ namespace lib2
 
         constexpr virtual ~basic_ostream() noexcept = default;
 
-        constexpr void put(const T& val)
+        [[nodiscard]] constexpr size_type write_available() const noexcept
+        {
+            return static_cast<size_type>(pend_ - pcur_);
+        }
+
+        [[nodiscard]] constexpr size_type amount_written() const noexcept
+        {
+            return static_cast<size_type>(pcur_ - pbeg_);
+        }
+
+        constexpr void put(T val)
         {
             if (write_available())
             {
-                *pcur_++ = val;
+                *pcur_++ = std::move(val);
             }
             else
             {
-                write(&val, 1);
+                overflow(std::move(val));
             }
         }
 
@@ -42,8 +54,41 @@ namespace lib2
             return amount;
         }
 
-        virtual constexpr void write(const T* vals, size_type count) = 0;
-        virtual constexpr void fill(const T& val, size_type count) = 0;
+        virtual constexpr void write(const T* vals, size_type count)
+        {
+            while (count)
+            {
+                if (const auto avail {std::min(count, write_available())}; avail)
+                {
+                    pcur_ = std::copy_n(vals, avail, pcur_);
+                    vals += avail;
+                    count -= avail;
+                }
+                else
+                {
+                    overflow(*vals);
+                    ++vals;
+                    --count;
+                }
+            }
+        }
+
+        virtual constexpr void fill(const T& val, size_type count)
+        {
+            while (count)
+            {
+                if (const auto avail {std::min(count, write_available())}; avail)
+                {
+                    pcur_ = std::fill_n(pcur_, avail, val);
+                    count -= avail;
+                }
+                else
+                {
+                    overflow(val);
+                    --count;
+                }
+            }
+        }
 
         virtual constexpr void flush() {}
     protected:
@@ -73,16 +118,6 @@ namespace lib2
         {
             return pbeg_ != pend_;
         }
-        
-        [[nodiscard]] constexpr size_type write_available() const noexcept
-        {
-            return static_cast<size_type>(pend_ - pcur_);
-        }
-
-        [[nodiscard]] constexpr size_type amount_written() const noexcept
-        {
-            return static_cast<size_type>(pcur_ - pbeg_);
-        }
 
         constexpr void pbump(const ssize_type count) noexcept
         {
@@ -104,6 +139,11 @@ namespace lib2
             std::swap(pcur_, other.pcur_);
             std::swap(pend_, other.pend_);
         }
+
+        virtual constexpr void overflow(T val)
+        {
+            throw std::logic_error{"Overflow not supported"};
+        }
     private:
         T* pbeg_;
         T* pcur_;
@@ -121,7 +161,7 @@ namespace lib2
     using text_ostream = basic_text_ostream<char>;
 
     export
-    using text_wostream = basic_text_ostream<wchar_t>;
+    using wtext_ostream = basic_text_ostream<wchar_t>;
 
     export
 	template<class T, class S = text_ostream>
@@ -133,15 +173,15 @@ namespace lib2
 
     export
     template<class T>
-    basic_ostream<T>& operator<<(basic_ostream<T>& os, const T& val)
+    basic_ostream<T>& operator<<(basic_ostream<T>& os, T val)
     {
-        os.put(val);
+        os.put(std::move(val));
         return os;
     }
 
     export
     template<class CharT>
-    basic_text_ostream<CharT>& operator<<(basic_text_ostream<CharT>& os, const CharT* s)
+    basic_text_ostream<CharT>& operator<<(basic_text_ostream<CharT>& os, const CharT* const s)
     {
         os.write(s, std::char_traits<CharT>::length(s));
         return os;
@@ -201,6 +241,53 @@ namespace lib2
     {
         os.fill(op.fill, op.count);
         return os;
+    }
+
+    template<character CharT>
+    struct io_quoted_t
+    {
+        std::basic_string_view<CharT> str;
+        CharT delim;
+        CharT escape;
+    };
+
+    export
+    template<character CharT>
+    io_quoted_t<CharT> quoted(const std::basic_string_view<CharT> str, const CharT delim = CharT('"'), const CharT escape = CharT('\\')) noexcept
+    {
+        return {str, delim, escape};
+    }
+
+    export
+    template<character CharT>
+    io_quoted_t<CharT> quoted(const CharT* const str, const CharT delim = CharT('"'), const CharT escape = CharT('\\')) noexcept
+    {
+        return {std::basic_string_view{str}, delim, escape};
+    }
+
+    export
+    template<character CharT, class Traits, class Allocator>
+    io_quoted_t<CharT> quoted(const std::basic_string<CharT, Traits, Allocator>& str, const CharT delim = CharT('"'), const CharT escape = CharT('\\')) noexcept
+    {
+        return {std::basic_string_view{str}, delim, escape};
+    }
+
+    export
+    template<class CharT>
+    basic_text_ostream<CharT>& operator<<(basic_text_ostream<CharT>& os, io_quoted_t<CharT> q)
+    {
+        const CharT finds[] {q.delim, q.escape};
+
+        os << q.delim;
+        std::size_t idx {q.str.find_first_of(finds, 0, 2)};
+        while (idx != std::string_view::npos)
+        {
+            os << q.str.substr(0, idx) << q.escape;
+            q.str.remove_prefix(idx);
+            idx = q.str.find_first_of(finds, 0, 2);
+        }
+        
+        return os << q.str << q.delim;
     }
 
     export

@@ -10,6 +10,7 @@ FILE_SET HEADERS FILES
     string.ixx
     arithmetic.ixx
     misc.ixx
+    ranges.ixx
 PRIVATE
     arithmetic.cpp
 )
