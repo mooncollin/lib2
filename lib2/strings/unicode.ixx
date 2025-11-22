@@ -1,4 +1,4 @@
-export module lib2.fmt:unicode;
+export module lib2.strings:unicode;
 
 import std;
 
@@ -48,9 +48,9 @@ namespace lib2
                 advance();
             }
 
-            [[nodiscard]] constexpr bool is_invalid() const noexcept
+            [[nodiscard]] constexpr bool invalid() const noexcept
             {
-                return invalid;
+                return invalid_;
             }
 
             constexpr std::ranges::subrange<std::ranges::iterator_t<V>, std::ranges::sentinel_t<V>> leftover()
@@ -75,11 +75,11 @@ namespace lib2
             std::ranges::sentinel_t<V> end_;
             std::uint32_t codepoint {0};
             bool done {false};
-            bool invalid {false};
+            bool invalid_ {false};
 
             constexpr void advance()
             {
-                invalid = false;
+                invalid_ = false;
                 if (it_ == end_)
                 {
                     done = true;
@@ -109,7 +109,7 @@ namespace lib2
                 }
                 else
                 {
-                    invalid = true;
+                    invalid_ = true;
                     codepoint = b;
                     return;
                 }
@@ -119,7 +119,7 @@ namespace lib2
                 {
                     if (it_ == end_)
                     {
-                        invalid = true;
+                        invalid_ = true;
                         codepoint = b;
                         return;
                     }
@@ -127,7 +127,7 @@ namespace lib2
                     const char8_t next {static_cast<char8_t>(*it_++)};
                     if ((next & 0xC0) != 0x80)
                     {
-                        invalid = true;
+                        invalid_ = true;
                         codepoint = b;
                         return;
                     }
@@ -142,7 +142,7 @@ namespace lib2
                      (cp >= 0xD800 && cp <= 0xDFFF)
                    )
                 {
-                    invalid = true;
+                    invalid_ = true;
                     codepoint = b;
                     return;
                 }
@@ -204,9 +204,9 @@ namespace lib2
 
             constexpr void operator++(int) { advance(); }
 
-            [[nodiscard]] constexpr bool is_invalid() const noexcept
+            [[nodiscard]] constexpr bool invalid() const noexcept
             {
-                return invalid;
+                return invalid_;
             }
 
             constexpr std::ranges::subrange<std::ranges::iterator_t<V>, std::ranges::sentinel_t<V>> leftover()
@@ -225,11 +225,11 @@ namespace lib2
             std::ranges::sentinel_t<V> end_;
             std::uint32_t codepoint{0};
             bool done{false};
-            bool invalid{false};
+            bool invalid_{false};
 
             constexpr void advance()
             {
-                invalid = false;
+                invalid_ = false;
                 if (it_ == end_)
                 {
                     done = true;
@@ -250,7 +250,7 @@ namespace lib2
                 {
                     if (it_ == end_)
                     {
-                        invalid = true;
+                        invalid_ = true;
                         codepoint = lead;
                         return;
                     }
@@ -264,13 +264,13 @@ namespace lib2
                     }
 
                     // Unpaired high surrogate
-                    invalid = true;
+                    invalid_ = true;
                     codepoint = lead;
                     return;
                 }
 
                 // Unpaired low surrogate
-                invalid = true;
+                invalid_ = true;
                 codepoint = lead;
             }
         };
@@ -326,9 +326,9 @@ namespace lib2
 
             constexpr void operator++(int) { advance(); }
 
-            [[nodiscard]] constexpr bool is_invalid() const noexcept
+            [[nodiscard]] constexpr bool invalid() const noexcept
             {
-                return invalid;
+                return invalid_;
             }
 
             constexpr std::ranges::subrange<std::ranges::iterator_t<V>, std::ranges::sentinel_t<V>> leftover()
@@ -347,11 +347,11 @@ namespace lib2
             std::ranges::sentinel_t<V> end_;
             std::uint32_t codepoint{0};
             bool done{false};
-            bool invalid{false};
+            bool invalid_{false};
 
             constexpr void advance()
             {
-                invalid = false;
+                invalid_ = false;
                 if (it_ == end_)
                 {
                     done = true;
@@ -363,7 +363,7 @@ namespace lib2
 
                 if (cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF))
                 {
-                    invalid = true;
+                    invalid_ = true;
                 }
 
                 codepoint = cp;
@@ -412,5 +412,210 @@ namespace lib2
                 static_assert(false, "Unsupported character type for codepoint_view");
             }
         }
+    }
+
+    export
+    template<std::input_iterator I, std::sentinel_for<I> S, std::output_iterator<char> O>
+    constexpr std::ranges::in_out_result<I, O> utf16_to_utf8(I begin, const S end, O out)
+    {
+        while (begin != end)
+        {
+            char32_t cp = *begin;
+            if (cp >= 0xD800 && cp <= 0xDBFF)
+            {
+                ++begin;
+                if (begin == end)
+                {
+                    throw std::invalid_argument{"Unpaired high surrogate"};
+                }
+
+                const char32_t low = *begin;
+                if (low < 0xDC00 || low > 0xDFFF)
+                {
+                    throw std::invalid_argument{"invalid_ surrogate pair"};
+                }
+
+                cp = 0x10000 + (((cp - 0xD800) << 10) | (low - 0xDC00));
+            }
+            else if (cp >= 0xDC00 && cp <= 0xDFFF)
+            {
+                throw std::invalid_argument{"Unpaired low surrogate"};
+            }
+
+            if (cp <= 0x7F)
+            {
+                *out++ = static_cast<char>(cp);
+            }
+            else if (cp <= 0x7FF)
+            {
+                *out++ = static_cast<char>(0xC0 | (cp >> 6));
+                *out++ = static_cast<char>(0x80 | (cp & 0x3F));
+            }
+            else if (cp <= 0xFFF)
+            {
+                *out++ = static_cast<char>(0xE0 | (cp >> 12));
+                *out++ = static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+                *out++ = static_cast<char>(0x80 | (cp & 0x3F));
+            }
+            else
+            {
+                *out++ = static_cast<char>(0xF0 | (cp >> 18));
+                *out++ = static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+                *out++ = static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+                *out++ = static_cast<char>(0x80 | (cp & 0x3F));
+            }
+
+            ++begin;
+        }
+
+        return {begin, out};
+    }
+
+    export
+    template<std::ranges::input_range R, std::output_iterator<char> O>
+    constexpr std::ranges::in_out_result<std::ranges::borrowed_iterator_t<R>, O> utf16_to_utf8(R&& r, O out)
+    {
+        return utf16_to_utf8(std::ranges::begin(r), std::ranges::end(r), std::move(out));
+    }
+
+    export
+    template<std::input_iterator I, std::sentinel_for<I> S, std::output_iterator<char16_t> O>
+    constexpr std::ranges::in_out_result<I, O> utf8_to_utf16(I begin, const S end, O out)
+    {
+        while (begin != end)
+        {
+            char8_t c = *begin;
+
+            char32_t cp;
+            std::size_t n;
+
+            if (c <= 0x7F)
+            {
+                cp = c;
+            }
+            else if ((c & 0xE0) == 0xC0)
+            {
+                ++begin;
+                if (begin == end)
+                {
+                    throw std::invalid_argument{"Truncated UTF-8"};
+                }
+
+                const char8_t c1 = *begin;
+                if ((c1 & 0xC0) != 0x80)
+                {
+                    throw std::invalid_argument{"invalid_ UTF-8 continuation"};
+                }
+
+                cp = ((c & 0x1F) << 6) | (c1 & 0x3F);
+
+                if (cp < 0x80)
+                {
+                    throw std::invalid_argument{"Overlong UTF-8"};
+                }
+            }
+            else if ((c & 0xF0) == 0xE0)
+            {
+                ++begin;
+                if (begin == end)
+                {
+                    throw std::invalid_argument{"Truncated UTF-8"};
+                }
+
+                const char8_t c1 = *begin;
+
+                ++begin;
+                if (begin == end)
+                {
+                    throw std::invalid_argument{"Truncated UTF-8"};
+                }
+
+                const char8_t c2 = *begin;
+
+                if ((c1 & 0xC0) != 0x80 || (c2 & 0xC0) != 0x80)
+                {
+                    throw std::invalid_argument{"invalid_ UTF-8 continuation"};
+                }
+
+                cp = ((c & 0x0F) << 12)
+                   | ((c1 & 0x3F) << 6)
+                   | (c2 & 0x3F);
+
+                if (cp < 0x800 || (cp >= 0xD800 && cp <= 0xDFFF))
+                {
+                    throw std::invalid_argument{"invalid_ UTF-8 codepoint"};
+                }
+            }
+            else if ((c & 0xF8) == 0xF0)
+            {
+                ++begin;
+                if (begin == end)
+                {
+                    throw std::invalid_argument{"Truncated UTF-8"};
+                }
+
+                const char8_t c1 = *begin;
+
+                ++begin;
+                if (begin == end)
+                {
+                    throw std::invalid_argument{"Truncated UTF-8"};
+                }
+
+                const char8_t c2 = *begin;
+
+                ++begin;
+                if (begin == end)
+                {
+                    throw std::invalid_argument{"Truncated UTF-8"};
+                }
+
+                const char8_t c3 = *begin;
+
+                if ((c1 & 0xC0) != 0x80 ||
+                    (c2 & 0xC0) != 0x80 ||
+                    (c3 & 0xC0) != 0x80
+                   )
+                {
+                    throw std::invalid_argument{"invalid_ UTF-8 continuation"};
+                }
+
+                cp = ((c & 0x07) << 18)
+                   | ((c1 & 0x3F) << 12)
+                   | ((c2 & 0x3F) << 6)
+                   | (c3 & 0x3F);
+
+                if (cp < 0x10000 || cp > 0x10FFFF)
+                {
+                    throw std::invalid_argument{"invalid_ UTF-8 codepoint"};
+                }
+            }
+            else
+            {
+                throw std::invalid_argument{"invalid_ UTF-8 leading byte"};
+            }
+
+            ++begin;
+
+            if (cp <= 0xFFFF)
+            {
+                *out++ = static_cast<char16_t>(cp);
+            }
+            else
+            {
+                cp -= 0x10000;
+                *out++ = static_cast<char16_t>(0xD800 + (cp >> 10));
+                *out++ = static_cast<char16_t>(0xD00 + (cp & 0x3FF));
+            }
+        }
+
+        return {begin, out};
+    }
+
+    export
+    template<std::ranges::input_range R, std::output_iterator<char16_t> O>
+    constexpr std::ranges::in_out_result<std::ranges::borrowed_iterator_t<R>, O> utf8_to_utf16(R&& r, O out)
+    {
+        return utf8_to_utf16(std::ranges::begin(r), std::ranges::end(r), std::move(out));
     }
 }

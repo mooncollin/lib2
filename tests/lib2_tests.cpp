@@ -7,6 +7,7 @@ import lib2.tests.compact_optional;
 import lib2.tests.strings;
 import lib2.tests.io;
 import lib2.tests.fmt;
+import lib2.tests.meta;
 // import lib2.tests.match;
 
 constexpr std::string_view usage() noexcept
@@ -49,6 +50,7 @@ int main(const int argc, char* const argv[])
     tests.add_test_suite(lib2::tests::strings::get_tests());
     tests.add_test_suite(lib2::tests::io::get_tests());
     tests.add_test_suite(lib2::tests::fmt::get_tests());
+    tests.add_test_suite(lib2::tests::meta::get_tests());
     // tests.add_test_suite(lib2::tests::match::get_tests());
     // tests.add_test_suite(lib2::tests::scan::get_tests());
 
@@ -72,13 +74,16 @@ int main(const int argc, char* const argv[])
                     lib2::cerr << test.name() << ":\n";
                     result.on(lib2::overloaded{
                         [&](const lib2::test::assert_exception& e) {
-                            lib2::cerr << "  " << e << '\n';
+                            lib2::cerr << "  " << e.what() << '\n';
+                            // lib2::cerr << "  " << e << '\n';
                         },
                         [&](const lib2::test::error_exception& e) {
-                            lib2::cerr  << "  " << e << '\n';
+                            lib2::cerr  << "  " << e.what() << '\n';
+                            // lib2::cerr  << "  " << e << '\n';
                         },
                         [&](const std::exception& e) {
-                            lib2::cerr << "  Uncaught exception (" << typeid(e).name() << "): " << e << '\n';
+                            lib2::cerr << "  Uncaught exception (" << typeid(e).name() << "): " << e.what() << '\n';
+                            // lib2::cerr << "  Uncaught exception (" << typeid(e).name() << "): " << e << '\n';
                         }
                     });
                     return 1;

@@ -2,7 +2,7 @@ export module lib2.test:test_suite;
 
 import std;
 
-import lib2.indirect_iterator;
+import lib2.iterator;
 
 import :test_case;
 import :test_result;

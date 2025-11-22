@@ -6,18 +6,22 @@ PUBLIC
 FILE_SET CXX_MODULES FILES
     concepts.ixx
     utility.ixx
-    indirect_iterator.ixx
     compact_optional.ixx
-    locatable_object.ixx
+    shared.ixx
     lib2.ixx
 FILE_SET HEADERS FILES
+PRIVATE
+    shared_win32.cpp
 )
 target_include_directories(lib2 PUBLIC ${CMAKE_SOURCE_DIR})
 
 add_subdirectory(platform)
 add_subdirectory(type_traits)
+add_subdirectory(meta)
+add_subdirectory(iterator)
 add_subdirectory(memory)
 add_subdirectory(strings)
+add_subdirectory(err)
 add_subdirectory(io)
 add_subdirectory(fmt)
 add_subdirectory(test)

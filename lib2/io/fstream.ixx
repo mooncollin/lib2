@@ -22,8 +22,7 @@ namespace lib2
         out         = 0x2,
         app         = 0x4,
         trunc       = 0x8,
-        binary      = 0x10,
-        noreplace   = 0x20
+        noreplace   = 0x10
     };
 
     export
@@ -47,38 +46,35 @@ namespace lib2
     }
 
     export
-    template<class CharT>
-    class basic_ofstream final : public basic_ostream<CharT>
+    class ofstream final : public basic_ostream<char>
     {
-        static_assert(io_character<CharT> || std::same_as<CharT, std::byte>, "Invalid character type");
     public:
-        using char_type  = CharT;
-        using size_type  = typename basic_ostream<CharT>::size_type;
-        using ssize_type = typename basic_ostream<CharT>::ssize_type;
+        using size_type  = typename basic_ostream<char>::size_type;
+        using ssize_type = typename basic_ostream<char>::ssize_type;
 
-        basic_ofstream() noexcept
+        ofstream() noexcept
             : handle{nullptr} {}
 
-        explicit basic_ofstream(const std::filesystem::path::string_type::value_type* const filename, const openmode mode = openmode::out)
-            : basic_ofstream{}
+        explicit ofstream(const std::filesystem::path::string_type::value_type* const filename, const openmode mode = openmode::out)
+            : ofstream{}
         {
             open(filename, mode);
         }
 
-        explicit basic_ofstream(const std::filesystem::path::string_type& filename, const openmode mode = openmode::out)
-            : basic_ofstream{filename.c_str(), mode} {}
+        explicit ofstream(const std::filesystem::path::string_type& filename, const openmode mode = openmode::out)
+            : ofstream{filename.c_str(), mode} {}
 
-        explicit basic_ofstream(const std::filesystem::path& filename, const openmode mode = openmode::out)
-            : basic_ofstream{filename.native(), mode} {}
+        explicit ofstream(const std::filesystem::path& filename, const openmode mode = openmode::out)
+            : ofstream{filename.native(), mode} {}
 
-        basic_ofstream(const basic_ofstream&) = delete;
-        basic_ofstream(basic_ofstream&& other) noexcept
-            : basic_ostream<CharT>{std::move(other)}
+        ofstream(const ofstream&) = delete;
+        ofstream(ofstream&& other) noexcept
+            : basic_ostream<char>{std::move(other)}
             , buf{std::exchange(other.buf, nullptr)}
             , handle{std::exchange(other.handle, nullptr)} {}
 
-        basic_ofstream& operator=(const basic_ofstream&) = delete;
-        basic_ofstream& operator=(basic_ofstream&& other) noexcept
+        ofstream& operator=(const ofstream&) = delete;
+        ofstream& operator=(ofstream&& other) noexcept
         {
             if (this != std::addressof(other))
             {
@@ -88,14 +84,14 @@ namespace lib2
                 }
                 catch (...) {}
 
-                basic_ostream<CharT>::operator=(std::move(other));
+                basic_ostream<char>::operator=(std::move(other));
                 buf = std::exchange(other.buf, nullptr);
                 handle = std::exchange(other.handle, nullptr);
             }
             return *this;
         }
 
-        virtual ~basic_ofstream() noexcept
+        virtual ~ofstream() noexcept
         {
             try
             {
@@ -109,10 +105,10 @@ namespace lib2
             }
         }
 
-        void swap(basic_ofstream& other) noexcept
+        void swap(ofstream& other) noexcept
         {
             using std::swap;
-            basic_ostream<CharT>::swap(other);
+            basic_ostream<char>::swap(other);
             swap(buf, other.buf);
             swap(handle, other.handle);
         }
@@ -136,7 +132,7 @@ namespace lib2
 
         void close();
 
-        void setbuf(CharT* s, size_type size)
+        void setbuf(char* s, size_type size)
         {
             if (s)
             {
@@ -161,12 +157,12 @@ namespace lib2
                     if ((this->pend() - this->pbeg()) < size)
                     {
                         delete[] buf.ptr();
-                        buf = new CharT[size];
+                        buf = new char[size];
                     }
                 }
                 else
                 {
-                    buf = new CharT[size];
+                    buf = new char[size];
                 }
                 s = buf.ptr();
             }
@@ -176,76 +172,67 @@ namespace lib2
         }
         
         void flush() override;
-        void write(const CharT* s, size_type count) override;
-        void fill(const CharT& ch, size_type count) override;
+        void write(const char* s, size_type count) override;
+        void fill(const char& ch, size_type count) override;
     protected:
-        void overflow(CharT) override;
+        void overflow(char) override;
     private:
-        tagged_pointer<CharT, 1> buf;
+        tagged_pointer<char, 1> buf;
         void* handle;
     };
 
     export
-    using ofstream  = basic_ofstream<char>;
-
-    export
-    using wofstream = basic_ofstream<wchar_t>;
-
-    export
-    using bofstream = basic_ofstream<std::byte>;
-
-    export
-    template<class CharT>
-    class basic_ifstream final : public basic_istream<CharT>
+    class ifstream final : public basic_istream<char>
     {
-        static_assert(io_character<CharT> || std::same_as<CharT, std::byte>, "Invalid character type");
     public:
-        using char_type          = CharT;
-        using size_type          = typename basic_istream<CharT>::size_type;
-        using ssize_type         = typename basic_istream<CharT>::ssize_type;
-        using traits_type        = typename basic_istream<CharT>::traits_type;
-        using opt_type           = typename basic_istream<CharT>::opt_type;
+        using size_type          = typename basic_istream<char>::size_type;
+        using ssize_type         = typename basic_istream<char>::ssize_type;
+        using traits_type        = typename basic_istream<char>::traits_type;
+        using opt_type           = typename basic_istream<char>::opt_type;
 
-        basic_ifstream() noexcept
+        ifstream() noexcept
             : handle{nullptr} {}
 
-        explicit basic_ifstream(const std::filesystem::path::string_type::value_type* const filename, const openmode mode = openmode::in)
-            : basic_ifstream{}
+        explicit ifstream(const std::filesystem::path::string_type::value_type* const filename, const openmode mode = openmode::in)
+            : ifstream{}
         {
             open(filename, mode);
         }
 
-        explicit basic_ifstream(const std::filesystem::path::string_type& filename, const openmode mode = openmode::in)
-            : basic_ifstream{filename.c_str(), mode} {}
+        explicit ifstream(const std::filesystem::path::string_type& filename, const openmode mode = openmode::in)
+            : ifstream{filename.c_str(), mode} {}
 
-        explicit basic_ifstream(const std::filesystem::path& filename, const openmode mode = openmode::in)
-            : basic_ifstream{filename.native(), mode} {}
+        explicit ifstream(const std::filesystem::path& filename, const openmode mode = openmode::in)
+            : ifstream{filename.native(), mode} {}
 
-        basic_ifstream(const basic_ifstream&) = delete;
-        basic_ifstream(basic_ifstream&& other) noexcept
-            : basic_istream<CharT>{std::move(other)}
+        ifstream(const ifstream&) = delete;
+        ifstream(ifstream&& other) noexcept
+            : basic_istream<char>{std::move(other)}
             , buf{std::move(other.buf)}
             , buf_capacity{std::exchange(other.buf_capacity, std::nullopt)}
             , handle{std::exchange(other.handle, nullptr)} {}
 
-        basic_ifstream& operator=(const basic_ifstream&) = delete;
-        basic_ifstream& operator=(basic_ifstream&& other) noexcept
+        ifstream& operator=(const ifstream&) = delete;
+        ifstream& operator=(ifstream&& other) noexcept
         {
-            basic_istream<CharT>::operator=(std::move(other));
+            close();
+            basic_istream<char>::operator=(std::move(other));
+
             buf = std::move(other.buf);
             buf_capacity = std::exchange(other.buf_capacity, std::nullopt);
             handle = std::exchange(other.handle, nullptr);
+
             return *this;
         }
 
-        void swap(basic_ifstream& other) noexcept
+        void swap(ifstream& other) noexcept
         {
             using std::swap;
 
-            basic_istream<CharT>::swap(other);
+            basic_istream<char>::swap(other);
             swap(buf, other.buf);
-            swap(buf_capacity, other.buf_capacity);
             swap(handle, other.handle);
+            swap(buf_capacity, other.buf_capacity);
         }
         
         [[nodiscard]] bool is_open() const noexcept
@@ -267,22 +254,20 @@ namespace lib2
 
         void close();
 
-        void setbuf(CharT* const s, const size_type size)
+        void setbuf(char* const s, const size_type size)
         {
             if (s)
             {
                 buf.reset();
                 this->setg(s, s, s);
             }
-            else if (size)
-            {
-                buf = std::make_unique<CharT[]>(size);
-                this->setg(buf.get(), buf.get(), buf.get());
-            }
             else
             {
-                buf.reset();
-                this->setg(nullptr, nullptr, nullptr);
+                if (!buf_capacity || *buf_capacity < size)
+                {
+                    buf = std::make_unique<char[]>(std::max(size_type{1}, size));
+                }
+                this->setg(buf.get(), buf.get(), buf.get());
             }
 
             buf_capacity = size;
@@ -300,58 +285,48 @@ namespace lib2
             }
         }
 
-        size_type read(CharT* s, size_type count) override;
+        size_type read(char* s, size_type count) override;
     protected:
         opt_type underflow() override;
     private:
-        std::unique_ptr<CharT[]> buf;
+        std::unique_ptr<char[]> buf;
         optional_size buf_capacity;
         void* handle;
     };
 
-    export
-    using ifstream  = basic_ifstream<char>;
-
-    export
-    using wifstream = basic_ifstream<wchar_t>;
-
-    template<class CharT>
     struct async_io;
 
     export
-    template<class CharT>
-    class basic_async_ofstream final : public basic_ostream<CharT>
+    class async_ofstream final : public basic_ostream<char>
     {
-        static_assert(io_character<CharT> || std::same_as<CharT, std::byte>, "Invalid character type");
     public:
-        using char_type  = CharT;
-        using size_type  = typename basic_ostream<CharT>::size_type;
-        using ssize_type = typename basic_ostream<CharT>::ssize_type;
+        using size_type  = typename basic_ostream<char>::size_type;
+        using ssize_type = typename basic_ostream<char>::ssize_type;
 
-        basic_async_ofstream() noexcept;
+        async_ofstream() noexcept;
 
-        explicit basic_async_ofstream(const std::filesystem::path::string_type::value_type* const filename, const openmode mode = openmode::out)
-            : basic_async_ofstream{}
+        explicit async_ofstream(const std::filesystem::path::string_type::value_type* const filename, const openmode mode = openmode::out)
+            : async_ofstream{}
         {
             open(filename, mode);
         }
 
-        explicit basic_async_ofstream(const std::filesystem::path::string_type& filename, const openmode mode = openmode::out)
-            : basic_async_ofstream{filename.c_str(), mode} {}
+        explicit async_ofstream(const std::filesystem::path::string_type& filename, const openmode mode = openmode::out)
+            : async_ofstream{filename.c_str(), mode} {}
 
-        explicit basic_async_ofstream(const std::filesystem::path& filename, const openmode mode = openmode::out)
-            : basic_async_ofstream{filename.native(), mode} {}
+        explicit async_ofstream(const std::filesystem::path& filename, const openmode mode = openmode::out)
+            : async_ofstream{filename.native(), mode} {}
 
-        basic_async_ofstream(const basic_async_ofstream&) = delete;
-        basic_async_ofstream(basic_async_ofstream&& other) noexcept
-            : basic_ostream<CharT>{std::move(other)}
+        async_ofstream(const async_ofstream&) = delete;
+        async_ofstream(async_ofstream&& other) noexcept
+            : basic_ostream<char>{std::move(other)}
             , pending_ios{std::move(other.pending_ios)}
             , free_ios{std::move(other.free_ios)}
             , offset{std::exchange(other.offset, 0)}
             , handle{std::exchange(other.handle, nullptr)} {}
 
-        basic_async_ofstream& operator=(const basic_async_ofstream&) = delete;
-        basic_async_ofstream& operator=(basic_async_ofstream&& other) noexcept
+        async_ofstream& operator=(const async_ofstream&) = delete;
+        async_ofstream& operator=(async_ofstream&& other) noexcept
         {
             if (this != &other)
             {
@@ -361,7 +336,7 @@ namespace lib2
                 }
                 catch (...) {}
 
-                basic_ostream<CharT>::operator=(std::move(other));
+                basic_ostream<char>::operator=(std::move(other));
                 pending_ios = std::move(other.pending_ios);
                 free_ios = std::move(other.free_ios);
                 offset = std::exchange(other.offset, 0);
@@ -370,12 +345,12 @@ namespace lib2
             return *this;
         }
 
-        virtual ~basic_async_ofstream() noexcept;
+        virtual ~async_ofstream() noexcept;
 
-        void swap(basic_async_ofstream& other) noexcept
+        void swap(async_ofstream& other) noexcept
         {
             using std::swap;
-            basic_ostream<CharT>::swap(other);
+            basic_ostream<char>::swap(other);
             swap(pending_ios, other.pending_ios);
             swap(free_ios, other.free_ios);
             swap(offset, other.offset);
@@ -407,42 +382,39 @@ namespace lib2
         }
         
         void flush() override;
-        void write(const CharT* s, size_type count) override;
-        void fill(const CharT& ch, size_type count) override;
+        void write(const char* s, size_type count) override;
+        void fill(const char& ch, size_type count) override;
     protected:
-        void overflow(CharT) override;
+        void overflow(char) override;
     private:
-        async_io<CharT>* free_ios;
-        async_io<CharT>* pending_ios;
+        async_io* free_ios;
+        async_io* pending_ios;
         std::size_t offset;
         std::size_t default_buf_cap;
         void* handle;
     };
+    
+    struct io_init
+    {
+        io_init() noexcept;
+
+        lib2::text_ostream* cout_;
+        lib2::text_ostream* cerr_;
+        lib2::text_istream* cin_;
+    };
+
+    io_init& io_initializer() noexcept
+    {
+        static io_init instance;
+        return instance;
+    };
 
     export
-    using async_ofstream  = basic_async_ofstream<char>;
-
-    export
-    using async_wofstream = basic_async_ofstream<wchar_t>;
-
-    export
-    using async_bofstream = basic_async_ofstream<std::byte>;
-
-    export
-    extern inline text_ostream& cout;
+    text_ostream& cout {*io_initializer().cout_};
     
     export
-    extern inline wtext_ostream& wcout;
-    
-    export
-    extern inline text_ostream& cerr;
+    text_ostream& cerr {*io_initializer().cerr_};
 
     export
-    extern inline wtext_ostream& wcerr;
-
-    export
-    extern inline text_istream& cin;
-
-    export
-    extern inline wtext_istream& wcin;
+    text_istream& cin {*io_initializer().cin_};
 }

@@ -10,6 +10,11 @@ FILE_SET CXX_MODULES FILES
     spanstream.ixx
     fstream.ixx
     io.ixx
-PRIVATE
-    fstream_windows.cpp
 )
+
+if (WIN32)
+target_sources(lib2
+PRIVATE
+    fstream_win32.cpp
+)
+endif()

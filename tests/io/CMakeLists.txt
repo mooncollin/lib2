@@ -6,7 +6,10 @@ target_sources(lib2_tests
 PUBLIC
 FILE_SET CXX_MODULES FILES
     ostream.ixx
+    istream.ixx
     stringstream.ixx
     fstream.ixx
     io.ixx
+PRIVATE
+    io.cpp
 )

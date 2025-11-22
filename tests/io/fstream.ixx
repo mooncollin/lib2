@@ -70,18 +70,4 @@ namespace lib2::tests::io
             file.flush();
         }
     };
-
-    export
-    class wofstream_write_test : public fstream_test
-    {
-    public:
-        wofstream_write_test()
-            : fstream_test{"wofstream_write"} {}
-
-        void operator()() final
-        {
-            lib2::wofstream file {wwrite_test_name};
-            file.write(wtest_contents.data(), wtest_contents.size());
-        }
-    };
 }

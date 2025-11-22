@@ -23,7 +23,7 @@ namespace lib2
     };
 
     export
-    template<io_character CharT>
+    template<character CharT>
     struct stream_traits<CharT>
     {
         using opt_type = optional_char<CharT>;

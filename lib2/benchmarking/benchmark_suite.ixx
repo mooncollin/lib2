@@ -2,7 +2,7 @@ export module lib2.benchmarking:benchmark_suite;
 
 import std;
 
-import lib2.indirect_iterator;
+import lib2.iterator;
 
 import :benchmark;
 

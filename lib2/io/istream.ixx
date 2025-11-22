@@ -3,12 +3,18 @@ export module lib2.io:istream;
 import std;
 
 import lib2.concepts;
+import lib2.strings;
+import lib2.meta;
 
 import :character;
 import :stream_traits;
 
 namespace lib2
 {
+    export
+    template<class T>
+    class istream_iterator;
+
     export
     template<class T>
     class basic_istream
@@ -21,6 +27,11 @@ namespace lib2
         using opt_type      = typename stream_traits<T>::opt_type;
 
         virtual ~basic_istream() noexcept = default;
+
+        [[nodiscard]] constexpr size_type read_available() const noexcept
+        {
+            return static_cast<size_type>(gend_ - gcur_);
+        }
 
         constexpr opt_type get()
         {
@@ -44,16 +55,12 @@ namespace lib2
 
         constexpr opt_type next()
         {
-            switch (gend_ - gcur_)
+            if (bump())
             {
-            case 0:
-                uflow();
                 return get();
-            case 1:
-                return underflow();
-            default:
-                return *(++gcur_);
             }
+
+            return {};
         }
 
         constexpr virtual size_type read(T* buf, size_type count)
@@ -61,12 +68,11 @@ namespace lib2
             const auto save {count};
             while (count)
             {
-                if (const auto avail {read_available()})
+                if (const auto avail {std::min(count, read_available())})
                 {
-                    const auto amount {std::min(count, avail)};
-                    buf = std::copy_n(gcur_, amount, buf);
-                    gbump(amount);
-                    count -= amount;
+                    buf = std::copy_n(gcur_, avail, buf);
+                    gcur_ += avail;
+                    count -= avail;
                 }
                 else if (auto val {uflow()})
                 {
@@ -87,30 +93,28 @@ namespace lib2
             const auto save {count};
             while (count)
             {
-                if (const auto avail {read_available()})
+                if (const auto avail {std::min(count, read_available())})
                 {
-                    const auto to_read {std::min(count, avail)};
-                    const auto end {gcur_ + to_read};
+                    const auto end {gcur_ + avail};
                     const auto x {std::find(gcur_, end, delim)};
-                    const std::size_t read_count = x - gcur_;
-                    buf = std::copy_n(gcur_, read_count, buf);
-                    gbump(read_count);
+                    const auto read_count {x - gcur_};
+                    buf = std::copy(gcur_, x, buf);
+                    gcur_  = x;
                     count -= read_count;
                     if (x != end)
                     {
-                        --count;
-                        gbump(1);
                         break;
                     }
                 }
-                else if (auto val {uflow()})
+                else if (auto val {underflow()})
                 {
-                    --count;
                     if (val == delim)
                     {
                         break;
                     }
                     *buf++ = std::move(*val);
+                    gcur_ += read_available();
+                    --count;
                 }
                 else
                 {
@@ -131,11 +135,10 @@ namespace lib2
             const auto save {count};
             while (count)
             {
-                if (const auto avail {read_available()})
+                if (const auto avail {std::min(count, read_available())})
                 {
-                    const auto to_read {std::min(count, avail)};
-                    gbump(to_read);
-                    count -= to_read;
+                    gcur_ += avail;
+                    count -= avail;
                 }
                 else if (uflow())
                 {
@@ -160,19 +163,17 @@ namespace lib2
             const auto save {count};
             while (count)
             {
-                if (const auto avail {read_available()})
+                if (const auto avail {std::min(count, read_available())})
                 {
-                    const auto to_read {std::min(count, avail)};
-                    const auto end {gcur_ + to_read};
+                    const auto end {gcur_ + avail};
                     const auto x {std::find(gcur_, end, delim)};
-                    const std::size_t read_count = x - gcur_;
-                    gbump(read_count);
-                    count -= read_count;
+                    count -= x - gcur_;
+                    gcur_  = x;
                     
                     if (x != end)
                     {
                         --count;
-                        gbump(1);
+                        ++gcur_;
                         break; 
                     }
                 }
@@ -199,6 +200,23 @@ namespace lib2
         {
             func(*this);
             return *this;
+        }
+
+        basic_istream& operator>>(basic_istream& (*func)(basic_istream&) noexcept) noexcept
+        {
+            func(*this);
+            return *this;
+        }
+
+        istream_iterator<T> begin();
+        static constexpr constexpr_value<std::default_sentinel> end{};
+
+        template<class F>
+            requires(std::is_invocable_r_v<const T*, F, const T*, const T*>)
+        constexpr size_type consume(F&& f) noexcept(std::is_nothrow_invocable_v<F, const T*, const T*>)
+        {
+            const auto old_gcur {std::exchange(gcur_, std::invoke(std::forward<F>(f), gcur_, gend_))};
+            return static_cast<size_type>(gcur_ - old_gcur);
         }
     protected:
         constexpr basic_istream() noexcept
@@ -253,16 +271,6 @@ namespace lib2
             std::swap(gcur_, other.gcur_);
             std::swap(gend_, other.gend_);
         }
-
-        [[nodiscard]] constexpr size_type read_available() const noexcept
-        {
-            return static_cast<size_type>(gend_ - gcur_);
-        }
-
-        [[nodiscard]] constexpr bool is_buffered() const noexcept
-        {
-            return gbeg_ != gend_;
-        }
     private:
         T* gbeg_;
         T* gcur_;
@@ -276,7 +284,7 @@ namespace lib2
                 count += read_available();
                 gcur_ = gend_;
             }
-            while (underflow());
+            while (uflow() && ++count);
 
             return count;
         }
@@ -284,19 +292,29 @@ namespace lib2
         constexpr size_type ignore_unlimited(const T& delim)
         {
             size_type count {0};
-            do
+            while (true)
             {
-                const auto x {std::find(gcur_, gend_, delim)};
-                count += x - gcur_;
-                gcur_ = x;
-                if (gcur_ != gend_)
+                if (read_available())
                 {
-                    ++gcur_;
+                    const auto x {std::find(gcur_, gend_, delim)};
+                    count += x - gcur_;
+                    gcur_ = x;
+                    if (gcur_ != gend_)
+                    {
+                        ++gcur_;
+                        ++count;
+                        break;
+                    }
+                }
+                else if (const auto val {uflow()})
+                {
                     ++count;
-                    break;
+                    if (val == delim)
+                    {
+                        break;
+                    }
                 }
             }
-            while (underflow());
 
             return count;
         }
@@ -306,31 +324,139 @@ namespace lib2
     using binary_istream = basic_istream<std::byte>;
 
     export
-    template<io_character CharT>
-    using basic_text_istream = basic_istream<CharT>;
+    using text_istream = basic_istream<char>;
 
-    export
-    using text_istream = basic_text_istream<char>;
-
-    export
-    using wtext_istream = basic_text_istream<wchar_t>;
-
-    export
-    template<io_character CharT>
-    basic_text_istream<CharT>& ws(basic_text_istream<CharT>& is)
+    template<class T>
+    class istream_iterator
     {
-        const auto& facet {std::use_facet<std::ctype<CharT>>({})};
-        
-        auto ch {is.get()};
-        while (ch)
+    public:
+        using iterator_category = std::input_iterator_tag;
+        using value_type = T;
+        using difference_type = std::ptrdiff_t;
+        using pointer = const T*;
+        using reference = const T&;
+        using istream_type = basic_istream<T>;
+
+        constexpr istream_iterator(const std::default_sentinel_t = {}) noexcept(std::is_nothrow_default_constructible_v<T>)
+            : value{}, stream{nullptr} {}
+
+        constexpr istream_iterator(istream_type& stream)
+            : value{}, stream{std::addressof(stream)}
         {
-            if (!facet.is(std::ctype_base::space, *ch))
+            if (auto val {stream.get()})
+            {
+                value = std::move(*val);
+            }
+            else
+            {
+                this->stream = nullptr;
+            }
+        }
+
+        constexpr istream_iterator(const istream_iterator& other) noexcept = default;
+
+        constexpr const T& operator*() const
+        {
+            return value;
+        }
+
+        constexpr const T* operator->() const
+        {
+            return std::addressof(value);
+        }
+
+        constexpr istream_iterator& operator++()
+        {
+            if (auto val {stream->next()})
+            {
+                value = std::move(*val);
+            }
+            else
+            {
+                stream = nullptr;
+            }
+
+            return *this;
+        }
+
+        constexpr istream_iterator operator++(int)
+        {
+            auto temp {*this};
+            ++*this;
+            return temp;
+        }
+
+        constexpr bool operator==(const istream_iterator& rhs) const noexcept
+        {
+            return stream == rhs.stream;
+        }
+        constexpr bool operator!=(const istream_iterator&) const noexcept = default;
+
+        constexpr bool operator==(const std::default_sentinel_t) const noexcept
+        {
+            return !stream;
+        }
+    private:
+        T value;
+        istream_type* stream;
+    };
+
+    template<class T>
+    istream_iterator<T> basic_istream<T>::begin()
+    {
+        return {*this};
+    }
+
+    export
+    text_istream& ws(text_istream& is)
+    {
+        while (is.get())
+        {
+            is.consume([](const auto begin, const auto end) {
+                return std::find_if_not(begin, end, is_ascii_space);
+            });
+            if (is.read_available())
             {
                 break;
             }
-            ch = is.next();
         }
 
         return is;
+    }
+
+    export
+    template<class T>
+    bool operator>>(basic_istream<T>& is, T& t)
+    {
+        if (auto val {is.get()})
+        {
+            t = std::move(*val);
+            is.bump();
+            return true;
+        }
+
+        return false;
+    }
+
+    export
+    bool operator>>(text_istream& is, std::string& str)
+    {
+        str.clear();
+        is >> ws;
+
+        while (is.get())
+        {
+            is.consume([&](const auto begin, auto end) {
+                end = std::find_if(begin, end, is_ascii_space);
+                str.append(begin, end);
+                return end;
+            });
+            if (is.read_available())
+            {
+                break;
+            }
+        }
+
+        return !str.empty();
     }
 }

@@ -2,6 +2,8 @@ export module lib2.io:stringstream;
 
 import std;
 
+import lib2.strings;
+
 import :ostream;
 import :istream;
 import :iostream;
@@ -9,7 +11,7 @@ import :iostream;
 namespace lib2
 {
     export
-    template<io_character CharT, class Traits = std::char_traits<CharT>, class Allocator = std::allocator<CharT>>
+    template<character CharT, class Traits = std::char_traits<CharT>, class Allocator = std::allocator<CharT>>
     class basic_istringstream : public basic_istream<CharT>
     {
     public:
@@ -151,7 +153,7 @@ namespace lib2
     };
 
     export
-    template<io_character CharT, class Traits = std::char_traits<CharT>, class Allocator = std::allocator<CharT>>
+    template<character CharT, class Traits = std::char_traits<CharT>, class Allocator = std::allocator<CharT>>
     class basic_ostringstream : public basic_ostream<CharT>
     {
     public:
@@ -368,7 +370,7 @@ namespace lib2
     };
 
     export
-    template<io_character CharT, class Traits = std::char_traits<CharT>, class Allocator = std::allocator<CharT>>
+    template<character CharT, class Traits = std::char_traits<CharT>, class Allocator = std::allocator<CharT>>
     class basic_stringstream : public basic_iostream<CharT>
     {
     public:
@@ -598,7 +600,7 @@ namespace lib2
     using stringstream   = basic_stringstream<char>;
     
     export
-    using wstringstream  = basic_stringstream<char>;
+    using wstringstream  = basic_stringstream<wchar_t>;
 
     export
     template<class CharT, class Traits, class Alloc>

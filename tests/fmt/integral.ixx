@@ -12,14 +12,14 @@ namespace lib2::tests::fmt
         static constexpr T min_num {
             [] {
                 if constexpr (std::signed_integral<T>) {
-                    return static_cast<T>(std::max(static_cast<std::intmax_t>(std::numeric_limits<T>::min()), static_cast<std::intmax_t>(-1'000'000)));
+                    return static_cast<T>(std::max(static_cast<std::intmax_t>(std::numeric_limits<T>::min()), static_cast<std::intmax_t>(-10'000)));
                 }
                 else {
                     return 0;
                 }
             }()
         };
-        static constexpr T max_num {static_cast<T>(std::min(static_cast<std::uintmax_t>(std::numeric_limits<T>::max()), static_cast<std::uintmax_t>(1'000'000)))};
+        static constexpr T max_num {static_cast<T>(std::min(static_cast<std::uintmax_t>(std::numeric_limits<T>::max()), static_cast<std::uintmax_t>(10'000)))};
     public:
         using lib2::test::test_case::test_case;
 

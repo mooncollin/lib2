@@ -7,4 +7,6 @@ FILE_SET CXX_MODULES FILES
     string.ixx
     chrono.ixx
     fmt.ixx
+PRIVATE
+    fmt.cpp
 )
