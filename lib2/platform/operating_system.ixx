@@ -75,10 +75,12 @@ namespace lib2
 	#endif
 	;
 
+	export
 	inline constexpr bool win32_api = (operating_system == operating_system_type::win32) ||
 									  (operating_system == operating_system_type::win64);
 
 	#pragma warning(disable:6285)
+	export
 	inline constexpr bool posix_api = (operating_system == operating_system_type::aix) ||
 									  (operating_system == operating_system_type::android) ||
 									  (operating_system == operating_system_type::beos) ||

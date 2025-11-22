@@ -15,6 +15,27 @@ namespace lib2::tests::fmt
         {
             const std::string_view base {"Hello, world!"};
 
+            lib2::ostringstream ss;
+            lib2::to_stream(ss, base, {});
+            lib2::test::assert_equal(ss.view(), base);
+
+            ss.str({});
+            lib2::to_stream(ss, base, {.align = lib2::align_type::right, .width=15});
+            lib2::test::assert_equal(ss.view(), "  Hello, world!");
+        }
+    };
+
+    export
+    class string_fmt_string_test : public lib2::test::test_case
+    {
+    public:
+        string_fmt_string_test()
+            : lib2::test::test_case{"string_fmt_string"} {}
+
+        void operator()() final
+        {
+            const std::string_view base {"Hello, world!"};
+
             std::string str {lib2::format("{}", base)};
             lib2::test::assert_equal(str, base);
 

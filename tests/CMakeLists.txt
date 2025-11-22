@@ -9,11 +9,14 @@ target_sources(lib2_tests
 PUBLIC
 FILE_SET CXX_MODULES FILES
 	compact_optional.ixx
+PRIVATE
+    compact_optional.cpp
 )
 
 add_subdirectory(type_traits)
 add_subdirectory(strings)
 add_subdirectory(io)
+add_subdirectory(meta)
 add_subdirectory(fmt)
 # add_subdirectory(match)
 

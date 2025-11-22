@@ -1,4 +1,4 @@
-export module lib2.locatable_object;
+export module lib2.memory:locatable_object;
 
 import std;
 

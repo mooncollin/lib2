@@ -3,15 +3,12 @@ export module lib2.io:character;
 import std;
 
 import lib2.compact_optional;
+import lib2.strings;
 
 namespace lib2
 {
     export
-    template<class T>
-    concept io_character = std::same_as<T, char> || std::same_as<T, wchar_t>;
-
-    export
-    template<io_character CharT>
+    template<character CharT>
     class optional_char : private compact_optional<typename std::char_traits<CharT>::int_type, std::numeric_limits<typename std::char_traits<CharT>::int_type>::max()>
     {
         using base = compact_optional<typename std::char_traits<CharT>::int_type, std::numeric_limits<typename std::char_traits<CharT>::int_type>::max()>;

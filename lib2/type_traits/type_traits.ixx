@@ -9,10 +9,6 @@ export import :function_traits;
 namespace lib2
 {
 	export
-    template<auto V>
-    using constexpr_value = std::integral_constant<decltype(V), V>;
-
-	export
 	template<typename T, typename... Ts>
 	struct is_any_of : public std::disjunction<std::is_same<T, Ts>...> {};
 

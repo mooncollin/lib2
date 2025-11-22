@@ -68,6 +68,12 @@ namespace lib2
     };
 
     export
+    using binary_ospanstream = basic_ospanstream<std::byte>;
+
+    export
+    using text_ospanstream = basic_ospanstream<char>;
+
+    export
     template<class T>
     class basic_ispanstream : public basic_istream<T>
     {
@@ -111,4 +117,10 @@ namespace lib2
             basic_istream<T>::swap(other);
         }
     };
+
+    export
+    using binary_ispanstream = basic_ispanstream<std::byte>;
+
+    export
+    using text_ispanstream = basic_ispanstream<char>;
 }

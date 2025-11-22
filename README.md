@@ -43,32 +43,32 @@ Write characters:
 ---------------------------------------------
 Benchmark            Time Iterations Multiple
 ---------------------------------------------
-lib2::ostringstream    5s  180000511 2.00
-std::stringbuf         5s  173673742 1.93
-std::string            5s  169376743 1.88
-std::ostringstream     5s   89890409 1.00
+lib2::ostringstream    5s  178242011 1.84
+std::string            5s  173816111 1.80
+std::stringbuf         5s  173559612 1.80
+std::ostringstream     5s   96631776 1.00
 ```
 ```
 Write strings:
 -------------------------------------------------
 Benchmark                Time Iterations Multiple
 -------------------------------------------------
-std::stringbuf      1608.28ms   30000000 1.74
-lib2::ostringstream 1695.59ms   30000000 1.65
-std::string         2088.97ms   30000000 1.34
-std::ostringstream  2794.28ms   30000000 1.00
+lib2::ostringstream 1653.71ms   30000000 1.50
+std::stringbuf      1688.29ms   30000000 1.47
+std::string         2075.81ms   30000000 1.19
+std::ostringstream  2480.17ms   30000000 1.00
 ```
 ### fstream
 ```
 --------------------------------------------
 Benchmark           Time Iterations Multiple
 --------------------------------------------
-lib2_fstream          8s  130342810 7.97
-lib2_async_fstream    8s  114989771 7.03
-lib2_fstream_fmt      8s   70692335 4.32
-fstream               8s   21145601 1.29
-fprintf               8s   17253510 1.06
-fstream_print         8s   16351233 1.00
+lib2_fstream          8s  137382251 8.11    
+lib2_async_fstream    8s  117637319 6.95    
+lib2_fstream_fmt      8s   64894826 3.83    
+fstream               8s   21369867 1.26    
+fprintf               8s   19823362 1.17    
+fstream_print         8s   16937607 1.00
 ```
 ## fmt
 ```
@@ -76,20 +76,20 @@ Default formatting of std::uint32:
 ----------------------------------------
 Benchmark       Time Iterations Multiple
 ----------------------------------------
-lib2::ostream     5s   94082134 7.02
-std::to_string    5s   76448604 5.70
-lib2::format      5s   68478429 5.11
-std::format       5s   48250966 3.60
-std::ostream      5s   13401494 1.00
+std::to_string    5s   80722295 7.56
+lib2::ostream     5s   63618137 5.96
+std::format       5s   49360006 4.62
+lib2::format      5s   43089415 4.03
+std::ostream      5s   10683052 1.00
 ```
 ```
 Default formatting of std::int32:
 ----------------------------------------
 Benchmark       Time Iterations Multiple
 ----------------------------------------
-lib2::ostream     5s   69888758 5.67
-lib2::format      5s   54238168 4.40
-std::to_string    5s   54205795 4.39
-std::format       5s   38163354 3.09
-std::ostream      5s   12333896 1.00
+std::to_string    5s   63858623 6.30
+lib2::ostream     5s   55333765 5.46
+lib2::format      5s   40380979 3.98
+std::format       5s   39523016 3.90
+std::ostream      5s   10138718 1.00
 ```

@@ -2,7 +2,7 @@ export module lib2.strings:character;
 
 import std;
 
-import :utility;
+import lib2.platform;
 
 namespace lib2
 {
@@ -21,6 +21,47 @@ namespace lib2
     export
     template<class T, std::size_t N>
     struct is_string_literal<const T[N]> : std::bool_constant<character<T>> {};
+
+    export
+    template<class T>
+    concept string_like = std::convertible_to<T, std::string_view>;
+
+    export
+    struct cstring_sentinel_t
+    {
+        template<std::input_iterator It>
+            requires(character<std::iter_value_t<It>>)
+        constexpr bool operator==(const It it) const noexcept(noexcept(*it))
+        {
+            return *it == std::iter_value_t<It>{0};
+        }
+
+        template<std::input_iterator It>
+            requires(character<std::iter_value_t<It>>)
+        constexpr bool operator!=(const It it) const noexcept(noexcept(*it))
+        {
+            return *it != std::iter_value_t<It>{0};
+        }
+    };
+
+    export
+    template<std::input_iterator It>
+        requires(character<std::iter_value_t<It>>)
+    constexpr bool operator==(const It it, const cstring_sentinel_t s) noexcept(noexcept(*it))
+    {
+        return s == it;
+    }
+
+    export
+    template<std::input_iterator It>
+        requires(character<std::iter_value_t<It>>)
+    constexpr bool operator!=(const It it, const cstring_sentinel_t s) noexcept(noexcept(*it))
+    {
+        return s != it;
+    }
+
+    export
+    constexpr cstring_sentinel_t cstring_sentinel {};
 
     struct is_ascii_fn
     {
@@ -222,12 +263,18 @@ namespace lib2
         template<character CharT>
         [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
         {
-            return c == ' '  ||
-                   c == '\t' ||
-                   c == '\n' ||
-                   c == '\v' ||
-                   c == '\f' ||
-                   c == '\r';
+            switch (c)
+            {
+            case ' ':
+            case '\t':
+            case '\n':
+            case '\v':
+            case '\f':
+            case '\r':
+                return true;
+            default:
+                return false;
+            }
         }
     };
 
@@ -317,4 +364,123 @@ namespace lib2
 
     export
     constexpr ascii_to_upper_fn ascii_to_upper {};
+
+    struct ascii_icompare_fn
+    {
+        template<character CharT>
+        [[nodiscard]] constexpr std::strong_ordering operator()(const CharT a, const CharT b) const noexcept
+        {
+            const auto lower_a {ascii_to_lower(a)};
+            const auto lower_b {ascii_to_lower(b)};
+            if (lower_a < lower_b)
+            {
+                return std::strong_ordering::less;
+            }
+            else if (lower_a > lower_b)
+            {
+                return std::strong_ordering::greater;
+            }
+
+            return std::strong_ordering::equal;
+        }
+
+        template<character CharT>
+        [[nodiscard]] constexpr std::strong_ordering operator()(const std::basic_string_view<CharT> a, const std::basic_string_view<CharT> b) const noexcept
+        {
+            const auto min_size {std::min(a.size(), b.size())};
+            for (std::size_t i {0}; i < min_size; ++i)
+            {
+                const auto char_order {(*this)(a[i], b[i])};
+                if (char_order != std::strong_ordering::equal)
+                {
+                    return char_order;
+                }
+            }
+
+            if (a.size() < b.size())
+            {
+                return std::strong_ordering::less;
+            }
+            else if (a.size() > b.size())
+            {
+                return std::strong_ordering::greater;
+            }
+
+            return std::strong_ordering::equal;
+        }
+    };
+
+    export
+    constexpr ascii_icompare_fn ascii_icompare {};
+
+    struct ascii_iequal_fn
+    {
+        template<character CharT>
+        [[nodiscard]] constexpr bool operator()(const CharT a, const CharT b) const noexcept
+        {
+            return ascii_to_lower(a) == ascii_to_lower(b);
+        }
+
+        template<character CharT>
+        [[nodiscard]] constexpr bool operator()(const std::basic_string_view<CharT> a, const std::basic_string_view<CharT> b) const noexcept
+        {
+            if (a.size() != b.size())
+            {
+                return false;
+            }
+
+            for (std::size_t i {0}; i < a.size(); ++i)
+            {
+                if (!(*this)(a[i], b[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    };
+
+    export
+    constexpr ascii_iequal_fn ascii_iequal {};
+
+    struct ascii_icontains_fn
+    {
+        template<character CharT>
+        [[nodiscard]] constexpr bool operator()(const std::basic_string_view<CharT> haystack, const std::basic_string_view<CharT> needle) const noexcept
+        {
+            if (needle.empty())
+            {
+                return true;
+            }
+
+            if (haystack.size() < needle.size())
+            {
+                return false;
+            }
+
+            for (std::size_t i {0}; i <= haystack.size() - needle.size(); ++i)
+            {
+                bool found {true};
+                for (std::size_t j {0}; j < needle.size(); ++j)
+                {
+                    if (!ascii_iequal(haystack[i + j], needle[j]))
+                    {
+                        found = false;
+                        break;
+                    }
+                }
+
+                if (found)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    };
+
+    export
+    constexpr ascii_icontains_fn ascii_icontains {};
 }

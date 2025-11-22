@@ -22,12 +22,14 @@ namespace lib2
         using size_type       = std::size_t;
         using difference_type = std::ptrdiff_t;
 
+        using const_array_ref_t = const CharT(&)[N + 1];
+
         constexpr basic_string_literal(const CharT* const ptr, const std::integral_constant<std::size_t, N>) noexcept
         {
             std::copy_n(ptr, N, data_);
         }
 
-        constexpr basic_string_literal(const CharT(&txt)[N + 1]) noexcept
+        consteval basic_string_literal(const CharT(&txt)[N + 1]) noexcept
             : basic_string_literal{txt, std::integral_constant<std::size_t, N>{}} {}
 
         static constexpr std::integral_constant<std::size_t, N> size {};
@@ -46,6 +48,11 @@ namespace lib2
         {
             return view();
         }
+
+        [[nodiscard]] constexpr operator const_array_ref_t() const noexcept
+        {
+            return data_;
+        }
     };
 
     export
@@ -63,4 +70,13 @@ namespace lib2
     export
     template<std::size_t N>
     using wstring_literal = basic_string_literal<wchar_t, N>;
+
+    namespace literals
+    {
+        export
+        template<lib2::basic_string_literal Str>
+        constexpr auto operator""_strlit() {
+            return Str;
+        }
+    }
 }

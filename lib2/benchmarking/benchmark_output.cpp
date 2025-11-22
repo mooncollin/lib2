@@ -1,6 +1,17 @@
 module lib2.benchmarking;
 
+import std;
+
+import lib2.io;
+import lib2.fmt;
+
 import :benchmark_output;
+
+namespace lib2
+{
+    template<class Rep, class Period>
+    duration_fmt<Rep, Period> format_of(std::chrono::duration<Rep, Period>);
+}
 
 namespace lib2::benchmarking
 {

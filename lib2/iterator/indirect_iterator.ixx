@@ -1,4 +1,4 @@
-export module lib2.indirect_iterator;
+export module lib2.iterator:indirect_iterator;
 
 import std;
 

@@ -8,8 +8,6 @@ import :benchmark;
 
 namespace lib2::benchmarking
 {
-    class benchmarking_context;
-
     export
     struct benchmark_result
     {

@@ -26,15 +26,8 @@ namespace lib2
     };
 
     export
-    using byte_iostream = basic_iostream<std::byte>;
+    using binary_iostream = basic_iostream<std::byte>;
 
     export
-    template<io_character CharT>
-    using basic_text_iostream = basic_iostream<CharT>;
-
-    export
-    using text_iostream = basic_text_iostream<char>;
-
-    export
-    using wtext_iostream = basic_text_iostream<wchar_t>;
+    using text_iostream = basic_iostream<char>;
 }

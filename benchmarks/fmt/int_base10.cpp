@@ -41,6 +41,7 @@ public:
 
     void operator()() final
     {
+        ss.str({});
         ss << this->get_int();
     }
 private:
@@ -56,6 +57,7 @@ public:
 
     void operator()() final
     {
+        str.clear();
         std::format_to(std::back_inserter(str), "{}", this->get_int());
     }
 private:
@@ -71,7 +73,7 @@ public:
 
     void operator()() final
     {
-        str.append(std::to_string(this->get_int()));
+        str = std::to_string(this->get_int());
     }
 private:
     std::string str;
@@ -86,6 +88,7 @@ public:
 
     void operator()() final
     {
+        ss.str({});
         ss << this->get_int();
     }
 private:
@@ -101,6 +104,7 @@ public:
 
     void operator()() final
     {
+        ss.str({});
         lib2::format_to(ss, "{}", this->get_int());
     }
 private:

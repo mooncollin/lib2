@@ -16,6 +16,8 @@ namespace lib2::tests::fmt
         void operator()() final
         {
             lib2::ostringstream ss;
+
+            char buf[30] {};
             
             for (T v {min_num}; v < max_num; v += T{0.01})
             {
@@ -25,6 +27,7 @@ namespace lib2::tests::fmt
                 lib2::test::assert_equal(ss.view(), expected);
                 ss.str({});
                 lib2::format_to(ss, "{}", v);
+                std::to_chars(buf, buf + sizeof(buf), v);
                 lib2::test::assert_equal(ss.view(), expected);
             }
         }

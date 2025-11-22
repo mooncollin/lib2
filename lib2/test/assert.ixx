@@ -34,13 +34,15 @@ namespace lib2::test
 					}
 				}
 			}
-			else if constexpr (lib2::formattable<std::decay_t<T>, char>)
+			else if constexpr (lib2::stream_writable<std::decay_t<T>>)
+			{
+				lib2::ostringstream oss;
+				oss << value;
+				return std::move(oss).str();
+			}
+			else if constexpr (lib2::formattable<std::decay_t<T>>)
 			{
 				return lib2::format("{}", value);
-			}
-			else if constexpr (lib2::formattable<std::decay_t<T>, wchar_t>)
-			{
-				return lib2::narrow(lib2::format(L"{}", value));
 			}
 			else
 			{
