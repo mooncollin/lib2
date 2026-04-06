@@ -2,8 +2,7 @@ export module lib2.tests.io:stringstream;
 
 import std;
 
-import lib2.test;
-import lib2.io;
+import lib2;
 
 namespace lib2::tests::io
 {

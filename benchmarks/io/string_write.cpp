@@ -331,7 +331,7 @@ public:
 
     void operator()() final
     {
-        ss << msg_literal;
+        ss.write(msg_literal);
     }
 private:
     lib2::ostringstream ss;
@@ -371,18 +371,18 @@ int main()
     string_literal_write.add_benchmark<string_string_literal_write_benchmark>();
     string_literal_write.add_benchmark<lib2_ostringstream_string_literal_write_benchmark>();
 
-    lib2::cout << "Default construction:\n";
+    lib2::print<"Default construction:\n">();
     lib2::benchmarking::print_benchmarks(ctx, default_construct);
 
-    lib2::cout << "\nInitialize and write:\n";
+    lib2::print<"\nInitialize and write:\n">();
     lib2::benchmarking::print_benchmarks(ctx, initialize_and_write);
 
-    lib2::cout << "\nWrite characters:\n";
+    lib2::print<"\nWrite characters:\n">();
     lib2::benchmarking::print_benchmarks(ctx, char_write);
 
-    lib2::cout << "\nWrite strings:\n";
+    lib2::print<"\nWrite strings:\n">();
     lib2::benchmarking::print_benchmarks(ctx2, string_write);
 
-    lib2::cout << "\nWrite literal strings:\n";
+    lib2::print<"\nWrite literal strings:\n">();
     lib2::benchmarking::print_benchmarks(ctx2, string_literal_write);
 }

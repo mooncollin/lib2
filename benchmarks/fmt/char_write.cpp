@@ -36,11 +36,26 @@ private:
     std::string str;
 };
 
-class lib2_fmt_bench : public lib2::benchmarking::benchmark
+class lib2_fmt_ct_bench : public lib2::benchmarking::benchmark
 {
 public:
-    lib2_fmt_bench()
-        : lib2::benchmarking::benchmark{"lib2::format"} {}
+    lib2_fmt_ct_bench()
+        : lib2::benchmarking::benchmark{"lib2::format<Fmt>"} {}
+
+    void operator()() final
+    {
+        str = lib2::format<"{:%^5}">('I');
+        lib2::benchmarking::do_not_optimize(str);
+    }
+private:
+    std::string str;
+};
+
+class lib2_fmt_rt_bench : public lib2::benchmarking::benchmark
+{
+public:
+    lib2_fmt_rt_bench()
+        : lib2::benchmarking::benchmark{"lib2::format(Fmt)"} {}
 
     void operator()() final
     {
@@ -57,9 +72,10 @@ int main()
     
     ostream_bench b1;
     format_bench b2;
-    lib2_fmt_bench b3;
+    lib2_fmt_ct_bench b3;
+    lib2_fmt_rt_bench b4;
 
     lib2::benchmarking::print_benchmarks(ctx,
-        b1, b2, b3
+        b1, b2, b3, b4
     );
 }

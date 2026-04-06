@@ -9,10 +9,15 @@ FILE_SET CXX_MODULES FILES
     compact_optional.ixx
     shared.ixx
     lib2.ixx
-FILE_SET HEADERS FILES
+)
+
+if (WIN32)
+target_sources(lib2
 PRIVATE
     shared_win32.cpp
 )
+endif()
+
 target_include_directories(lib2 PUBLIC ${CMAKE_SOURCE_DIR})
 
 add_subdirectory(platform)
@@ -26,7 +31,5 @@ add_subdirectory(io)
 add_subdirectory(fmt)
 add_subdirectory(test)
 add_subdirectory(benchmarking)
-# add_subdirectory(match)
-# add_subdirectory(scan)
 
 export(TARGETS lib2 NAMESPACE lib2:: FILE "${CMAKE_BINARY_DIR}/lib2Targets.cmake")

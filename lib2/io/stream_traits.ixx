@@ -15,14 +15,12 @@ namespace lib2
         using opt_type = std::optional<T>;
     };
 
-    export
     template<>
     struct stream_traits<std::byte>
     {
         using opt_type = optional_byte;
     };
 
-    export
     template<character CharT>
     struct stream_traits<CharT>
     {

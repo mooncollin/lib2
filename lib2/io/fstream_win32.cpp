@@ -98,7 +98,7 @@ namespace lib2
             DWORD read {0};
             if (!ReadConsoleW(handle, data, chunk, &read, nullptr))
             {
-                throw os_error{"Write console failed"};
+                throw os_error{"Read console failed"};
             }
 
             data += read;
@@ -149,7 +149,7 @@ namespace lib2
         }
     }
 
-    static HANDLE io_open(const std::filesystem::path::string_type::value_type* const filename, const DWORD access, const DWORD flags = FILE_ATTRIBUTE_NORMAL)
+    static HANDLE io_open(const std::filesystem::path::string_type::value_type* const filename, const DWORD access, const DWORD creation, const DWORD flags = FILE_ATTRIBUTE_NORMAL)
     {
         const auto handle {
             CreateFileW(
@@ -157,7 +157,7 @@ namespace lib2
             access,
             0,
             nullptr,
-            CREATE_ALWAYS,
+            creation,
             flags,
             nullptr
         )};
@@ -279,7 +279,9 @@ namespace lib2
             throw std::invalid_argument{"File must be opened with out mode"};
         }
 
-        handle = io_open(filename, GENERIC_WRITE);
+        DWORD creation {CREATE_ALWAYS};
+
+        handle = io_open(filename, GENERIC_WRITE, creation);
     }
 
     void ofstream::close()
@@ -424,7 +426,7 @@ namespace lib2
             throw std::invalid_argument{"File must be opened with in mode"};
         }
 
-        handle = io_open(filename, GENERIC_READ);
+        handle = io_open(filename, GENERIC_READ, OPEN_EXISTING);
     }
 
     void ifstream::close()
@@ -523,7 +525,14 @@ namespace lib2
             throw std::invalid_argument{"File must be opened with out mode"};
         }
 
-        handle = io_open(filename, GENERIC_WRITE, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL);
+        DWORD creation {CREATE_NEW};
+
+        if (mode & openmode::trunc)
+        {
+            creation = CREATE_ALWAYS;
+        }
+
+        handle = io_open(filename, GENERIC_WRITE, creation, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL);
     }
 
     void async_ofstream::close()
@@ -895,7 +904,7 @@ namespace lib2
                 else
                 {
                     underflow();
-                    std::copy_n(s, count, this->gcur());
+                    std::copy_n(this->gcur(), count, s);
                     this->gbump(count);
                     read_count += count;
                 }
@@ -909,11 +918,11 @@ namespace lib2
             const auto amount {[this] {
                 if constexpr (std::same_as<CharT, wchar_t>)
                 {
-                    return io_read_console(handle, buf, sizeof(buf));
+                    return io_read_console(handle, buf, std::size(buf));
                 }
                 else
                 {
-                    return io_read(handle, buf, sizeof(buf));
+                    return io_read(handle, buf, std::size(buf));
                 }
             }()};
 
@@ -972,20 +981,38 @@ namespace lib2
     protected:
         opt_type underflow() override
         {
-            const auto ch {console_stream.bump()};
+            auto ch {console_stream.bump()};
             if (!ch)
             {
                 return {};
             }
 
-            const wchar_t wch {*ch};
+            auto wch {*ch};
 
-            const auto result {utf16_to_utf8(&wch, &wch + 1, buf)};
-            this->setg(buf, buf, result.out);
+            if (wch == L'\r' && (ch = console_stream.bump()))
+            {
+                wch = *ch;
+                if (wch == L'\n')
+                {
+                    buf[0] = '\n';
+                    this->setg(buf, buf, buf + 1);
+                }
+                else
+                {
+                    buf[0] = '\r';
+                    const auto result {utf16_to_utf8(&wch, &wch + 1, buf + 1)};
+                    this->setg(buf, buf, result.out);
+                }
+            }
+            else
+            {
+                const auto result {utf16_to_utf8(&wch, &wch + 1, buf)};
+                this->setg(buf, buf, result.out);
+            }
             return buf[0];
         }
     private:
-        char buf[4];
+        char buf[8];
         bare_in_stream<wchar_t>& console_stream;
     };
 

@@ -8,7 +8,6 @@ import lib2.tests.strings;
 import lib2.tests.io;
 import lib2.tests.fmt;
 import lib2.tests.meta;
-// import lib2.tests.match;
 
 constexpr std::string_view usage() noexcept
 {
@@ -39,8 +38,7 @@ int main(const int argc, char* const argv[])
 
     if (!list && test_name.empty())
     {
-        lib2::cerr << usage()
-                   << "\nMust give a test name\n";
+        lib2::format_to<"{}\nMust give a test name\n">(lib2::cerr, usage());
         return 1;
     }
 
@@ -51,14 +49,12 @@ int main(const int argc, char* const argv[])
     tests.add_test_suite(lib2::tests::io::get_tests());
     tests.add_test_suite(lib2::tests::fmt::get_tests());
     tests.add_test_suite(lib2::tests::meta::get_tests());
-    // tests.add_test_suite(lib2::tests::match::get_tests());
-    // tests.add_test_suite(lib2::tests::scan::get_tests());
 
     if (list)
     {
         for (const auto& test : tests)
         {
-            lib2::cout << test.name() << '\n';
+            lib2::print<"{}\n">(test.name());
         }
     }
     else
@@ -71,19 +67,16 @@ int main(const int argc, char* const argv[])
                 const auto result {test.run()};
                 if (result.failed())
                 {
-                    lib2::cerr << test.name() << ":\n";
+                    lib2::format_to<"{}:\n">(lib2::cerr, test.name());
                     result.on(lib2::overloaded{
                         [&](const lib2::test::assert_exception& e) {
-                            lib2::cerr << "  " << e.what() << '\n';
-                            // lib2::cerr << "  " << e << '\n';
+                            lib2::format_to<" {}\n">(lib2::cerr, e);
                         },
                         [&](const lib2::test::error_exception& e) {
-                            lib2::cerr  << "  " << e.what() << '\n';
-                            // lib2::cerr  << "  " << e << '\n';
+                            lib2::format_to<" {}\n">(lib2::cerr, e);
                         },
                         [&](const std::exception& e) {
-                            lib2::cerr << "  Uncaught exception (" << typeid(e).name() << "): " << e.what() << '\n';
-                            // lib2::cerr << "  Uncaught exception (" << typeid(e).name() << "): " << e << '\n';
+                            lib2::format_to<"  Uncaught exception ({}): {}\n">(lib2::cerr, typeid(e).name(), e);
                         }
                     });
                     return 1;
@@ -95,7 +88,7 @@ int main(const int argc, char* const argv[])
 
         if (!found)
         {
-            lib2::cerr << "No test exists by the name: " << test_name << '\n';
+            lib2::format_to<"No test exists by the name: {}\n">(lib2::cerr, test_name);
             return 1;
         }
     }

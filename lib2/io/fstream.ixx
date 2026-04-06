@@ -172,6 +172,8 @@ namespace lib2
         }
         
         void flush() override;
+
+        using basic_ostream<char>::write;
         void write(const char* s, size_type count) override;
         void fill(const char& ch, size_type count) override;
     protected:
@@ -242,12 +244,12 @@ namespace lib2
 
         void open(const std::filesystem::path::string_type::value_type* const filename, const openmode mode = openmode::in);
 
-        void open(const std::filesystem::path::string_type& filename, const openmode mode = openmode::out)
+        void open(const std::filesystem::path::string_type& filename, const openmode mode = openmode::in)
         {
             open(filename.c_str(), mode);
         }
 
-        void open(const std::filesystem::path& path, const openmode mode = openmode::out)
+        void open(const std::filesystem::path& path, const openmode mode = openmode::in)
         {
             open(path.native(), mode);
         }
@@ -382,6 +384,8 @@ namespace lib2
         }
         
         void flush() override;
+
+        using basic_ostream<char>::write;
         void write(const char* s, size_type count) override;
         void fill(const char& ch, size_type count) override;
     protected:

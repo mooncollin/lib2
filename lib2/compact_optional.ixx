@@ -6,6 +6,19 @@ namespace lib2
 {
     export
     template<class T, auto Sentinel>
+    class compact_optional;
+
+    template<class T>
+    struct is_compact_optional : std::false_type {};
+
+    template<class T, auto Sentinel>
+    struct is_compact_optional<compact_optional<T, Sentinel>> : std::true_type {};
+
+    template<class T>
+    inline constexpr bool is_compact_optional_v {is_compact_optional<T>::value};
+
+    export
+    template<class T, auto Sentinel>
     class compact_optional
     {
     public:
@@ -226,36 +239,42 @@ namespace lib2
         }
 
         template<class U>
+            requires(!is_compact_optional_v<U>)
         constexpr bool operator==(const U& other) const
         {
             return value_ == other;
         }
 
         template<class U>
+            requires(!is_compact_optional_v<U>)
         constexpr bool operator!=(const U& other) const
         {
             return value_ != other;
         }
 
         template<class U>
+            requires(!is_compact_optional_v<U>)
         constexpr bool operator<(const U& other) const
         {
             return value_ < other;
         }
 
         template<class U>
+            requires(!is_compact_optional_v<U>)
         constexpr bool operator>(const U& other) const
         {
             return value_ > other;
         }
 
         template<class U>
+            requires(!is_compact_optional_v<U>)
         constexpr bool operator<=(const U& other) const
         {
             return value_ <= other;
         }
 
         template<class U>
+            requires(!is_compact_optional_v<U>)
         constexpr bool operator>=(const U& other) const
         {
             return value_ >= other;

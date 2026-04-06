@@ -11,133 +11,124 @@ import :assert_exception;
 
 namespace lib2::test
 {
-	namespace details
+	template<class T>
+	[[nodiscard]] static inline std::string output(const T& value)
 	{
-		template<class T>
-		[[nodiscard]] static inline std::string output(const T& value)
+		if constexpr (character<T>)
 		{
-			if constexpr (character<T>)
+			if (value == std::decay_t<T>{})
 			{
-				if (value == std::decay_t<T>{})
+				return "'\\0'";
+			}
+			else
+			{
+				if constexpr (std::same_as<std::decay_t<T>, char>)
 				{
-					return "'\\0'";
+					return {1, value};
 				}
 				else
 				{
-					if constexpr (std::same_as<std::decay_t<T>, char>)
-					{
-						return {1, value};
-					}
-					else
-					{
-						return lib2::format("<{}>'\\x{:x}'", typeid(value).name(), static_cast<std::intmax_t>(value));
-					}
+					return lib2::format<"<{}>'\\x{:x}'">(typeid(value).name(), static_cast<std::intmax_t>(value));
 				}
-			}
-			else if constexpr (lib2::stream_writable<std::decay_t<T>>)
-			{
-				lib2::ostringstream oss;
-				oss << value;
-				return std::move(oss).str();
-			}
-			else if constexpr (lib2::formattable<std::decay_t<T>>)
-			{
-				return lib2::format("{}", value);
-			}
-			else
-			{
-				return lib2::format("<{} at {}>", typeid(value).name(), static_cast<const void*>(std::addressof(value)));
 			}
 		}
-
-		[[nodiscard]] static inline std::string output(const auto& actual, const auto& expected)
+		else if constexpr (lib2::formattable<std::decay_t<T>>)
 		{
-			return lib2::format("Actual:\n{}\nExpected:\n{}", output(actual), output(expected));
+			return lib2::format<"{}">(value);
 		}
-
-		template<std::input_iterator I1,
-				std::sentinel_for<I1> S1,
-				std::input_iterator I2,
-				std::sentinel_for<I2> S2>
-		[[nodiscard]] static inline std::string output(I1 actual, I1 mismatch1, S1 end1, I2 expected, I2 mismatch2, S2 end2)
+		else
 		{
-			if constexpr (std::forward_iterator<I1> && std::forward_iterator<I2>)
+			return lib2::format<"<{} at {}>">(typeid(value).name(), static_cast<const void*>(std::addressof(value)));
+		}
+	}
+
+	[[nodiscard]] static inline std::string output(const auto& actual, const auto& expected)
+	{
+		return lib2::format<"Actual:\n{}\nExpected:\n{}">(output(actual), output(expected));
+	}
+
+	template<std::input_iterator I1,
+			std::sentinel_for<I1> S1,
+			std::input_iterator I2,
+			std::sentinel_for<I2> S2>
+	[[nodiscard]] static inline std::string output(I1 actual, I1 mismatch1, S1 end1, I2 expected, I2 mismatch2, S2 end2)
+	{
+		if constexpr (std::forward_iterator<I1> && std::forward_iterator<I2>)
+		{
+			std::string actual_str {"["};
+			std::size_t actual_end_size {1};
+
+			if (actual != end1)
 			{
-				std::string actual_str {"["};
-				std::size_t actual_end_size {1};
-
-				if (actual != end1)
+				if (actual == mismatch1)
 				{
-					if (actual == mismatch1)
-					{
-						++actual_end_size;
-					}
-
-					actual_str += output(*actual);
-					++actual;
+					++actual_end_size;
 				}
 
-				for (; actual != end1; ++actual)
+				actual_str += output(*actual);
+				++actual;
+			}
+
+			for (; actual != end1; ++actual)
+			{
+				actual_str += ", ";
+				actual_str += output(*actual);
+				if (actual == mismatch1)
 				{
-					actual_str += ", ";
-					actual_str += output(*actual);
-					if (actual == mismatch1)
-					{
-						actual_end_size = actual_str.size();
-					}
+					actual_end_size = actual_str.size();
 				}
+			}
 
-				actual_str += ']';
+			actual_str += ']';
 
-				std::string expected_str {"["};
-				std::size_t expected_end_size {1};
+			std::string expected_str {"["};
+			std::size_t expected_end_size {1};
 
-				if (expected != end2)
+			if (expected != end2)
+			{
+				if (expected == mismatch2)
 				{
-					if (expected == mismatch2)
-					{
-						++expected_end_size;
-					}
-					
-					expected_str += output(*expected);
-					++expected;
-				}
-
-				for (; expected != end2; ++expected)
-				{
-					expected_str += ", ";
-					expected_str += output(*expected);
-					if (expected == mismatch2)
-					{
-						expected_end_size = expected_str.size();
-					}
+					++expected_end_size;
 				}
 				
-				expected_str += ']';
+				expected_str += output(*expected);
+				++expected;
+			}
 
-				return lib2::format("Actual:\n{}\n{:>{}}\n\nExpected:\n{}\n{:>{}}\n",
-						actual_str,
-						'^', actual_end_size,
-						expected_str,
-						'^', expected_end_size);
-			}
-			else
+			for (; expected != end2; ++expected)
 			{
-				return {};
+				expected_str += ", ";
+				expected_str += output(*expected);
+				if (expected == mismatch2)
+				{
+					expected_end_size = expected_str.size();
+				}
 			}
+			
+			expected_str += ']';
+
+			return lib2::format("Actual:\n{}\n{:>{}}\n\nExpected:\n{}\n{:>{}}\n",
+					actual_str,
+					'^', actual_end_size,
+					expected_str,
+					'^', expected_end_size);
+		}
+		else
+		{
+			return {};
 		}
 	}
 
 	export
 	void fail(const std::string_view message = {}, const std::source_location& location = std::source_location::current())
 	{
-		throw assert_exception{lib2::format("({}:{}) failure: {}", location.file_name(), location.line(), message)};
+		throw assert_exception{lib2::format<"({}:{}) failure: {}">(location.file_name(), location.line(), message)};
 	}
 
 	export
 	void error(const std::string_view message = {}, const std::source_location& location = std::source_location::current())
 	{
-		throw error_exception{lib2::format("({}:{}) error: {}", location.file_name(), location.line(), message)};
+		throw error_exception{lib2::format<"({}:{}) error: {}">(location.file_name(), location.line(), message)};
 	}
 
 	export
@@ -149,7 +140,7 @@ namespace lib2::test
 	{
 		if(!(actual == expected))
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_equal failed: {}\n{}", location.file_name(), location.line(), message, details::output(actual, expected))};
+			throw assert_exception{lib2::format<"({}:{}) assert_equal failed: {}\n{}">(location.file_name(), location.line(), message, output(actual, expected))};
 		}
 	}
 
@@ -162,7 +153,7 @@ namespace lib2::test
 	{
 		if (!(actual != expected))
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_not_equal failed: {}\n{}", location.file_name(), location.line(), message, details::output(actual, expected))};
+			throw assert_exception{lib2::format<"({}:{}) assert_not_equal failed: {}\n{}">(location.file_name(), location.line(), message, output(actual, expected))};
 		}
 	}
 
@@ -172,7 +163,7 @@ namespace lib2::test
 	{
 		if (std::basic_string_view{actual} != std::basic_string_view{expected})
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_cstrings_equal failed: {}\n{}", location.file_name(), location.line(), message, details::output(actual, expected))};
+			throw assert_exception{lib2::format<"({}:{}) assert_cstrings_equal failed: {}\n{}">(location.file_name(), location.line(), message, output(actual, expected))};
 		}
 	}
 	
@@ -182,7 +173,7 @@ namespace lib2::test
 	{
 		if (std::basic_string_view{actual} == std::basic_string_view{expected})
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_cstrings_not_equal failed: {}\n{}", location.file_name(), location.line(), message, details::output(actual, expected))};
+			throw assert_exception{lib2::format<"({}:{}) assert_cstrings_not_equal failed: {}\n{}">(location.file_name(), location.line(), message, output(actual, expected))};
 		}
 	}
 
@@ -193,7 +184,7 @@ namespace lib2::test
 	{
 		if (!actual)
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_true failed: {}", location.file_name(), location.line(), message)};
+			throw assert_exception{lib2::format<"({}:{}) assert_true failed: {}">(location.file_name(), location.line(), message)};
 		}
 	}
 
@@ -204,7 +195,7 @@ namespace lib2::test
 	{
 		if (actual)
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_false failed: {}", location.file_name(), location.line(), message)};
+			throw assert_exception{lib2::format<"({}:{}) assert_false failed: {}">(location.file_name(), location.line(), message)};
 		}
 	}
 
@@ -214,7 +205,7 @@ namespace lib2::test
 	{
 		if (std::addressof(actual) != std::addressof(expected))
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_is failed: {}\n{}", location.file_name(), location.line(), message, details::output(std::addressof(actual), std::addressof(expected)))};
+			throw assert_exception{lib2::format<"({}:{}) assert_is failed: {}\n{}">(location.file_name(), location.line(), message, output(std::addressof(actual), std::addressof(expected)))};
 		}
 	}
 
@@ -225,7 +216,7 @@ namespace lib2::test
 	{
 		if (std::addressof(actual) == std::addressof(expected))
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_is_not failed: {}\n{}", location.file_name(), location.line(), message, details::output(std::addressof(actual), std::addressof(expected)))};
+			throw assert_exception{lib2::format<"({}:{}) assert_is_not failed: {}\n{}">(location.file_name(), location.line(), message, output(std::addressof(actual), std::addressof(expected)))};
 		}
 	}
 
@@ -235,7 +226,7 @@ namespace lib2::test
 	{
 		if constexpr (!std::same_as<Actual, Expected>)
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_is_type failed: {}\n{}", location.file_name(), location.line(), message, details::output(typeid(Actual).name(), typeid(Expected).name()))};
+			throw assert_exception{lib2::format<"({}:{}) assert_is_type failed: {}\n{}">(location.file_name(), location.line(), message, output(typeid(Actual).name(), typeid(Expected).name()))};
 		}
 	}
 
@@ -245,7 +236,7 @@ namespace lib2::test
 	{
 		if constexpr (std::same_as<Actual, Expected>)
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_is_not_type failed: {}\n{}", location.file_name(), location.line(), message, details::output(typeid(Actual).name(), typeid(Expected).name()))};
+			throw assert_exception{lib2::format<"({}:{}) assert_is_not_type failed: {}\n{}">(location.file_name(), location.line(), message, output(typeid(Actual).name(), typeid(Expected).name()))};
 		}
 	}
 
@@ -255,7 +246,7 @@ namespace lib2::test
 	{
 		if constexpr (!lib2::specialization_of<Actual, Expected>)
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_is_specialization_of failed: {}\n{}", location.file_name(), location.line(), message, details::output(typeid(Actual).name(), typeid(Expected).name()))};
+			throw assert_exception{lib2::format<"({}:{}) assert_is_specialization_of failed: {}\n{}">(location.file_name(), location.line(), message, output(typeid(Actual).name(), typeid(Expected).name()))};
 		}
 	}
 
@@ -265,7 +256,7 @@ namespace lib2::test
 	{
 		if constexpr (lib2::specialization_of<Actual, Expected>)
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_is_not_specialization_of failed: {}\n{}", location.file_name(), location.line(), message, details::output(typeid(Actual).name(), typeid(Expected).name()))};
+			throw assert_exception{lib2::format<"({}:{}) assert_is_not_specialization_of failed: {}\n{}">(location.file_name(), location.line(), message, output(typeid(Actual).name(), typeid(Expected).name()))};
 		}
 	}
 
@@ -276,7 +267,7 @@ namespace lib2::test
 		const auto casted {dynamic_cast<const Expected*>(std::addressof(actual))};
 		if (casted == nullptr)
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_is_instance failed: {}\n{}", location.file_name(), location.line(), message, details::output(typeid(Actual).name(), typeid(Expected).name()))};
+			throw assert_exception{lib2::format<"({}:{}) assert_is_instance failed: {}\n{}">(location.file_name(), location.line(), message, output(typeid(Actual).name(), typeid(Expected).name()))};
 		}
 	}
 
@@ -287,7 +278,7 @@ namespace lib2::test
 		const auto casted = dynamic_cast<const Expected*>(std::addressof(actual));
 		if (casted != nullptr)
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_is_not_instance failed: {}\n{}", location.file_name(), location.line(), message, details::output(typeid(Actual).name(), typeid(Expected).name()))};
+			throw assert_exception{lib2::format<"({}:{}) assert_is_not_instance failed: {}\n{}">(location.file_name(), location.line(), message, output(typeid(Actual).name(), typeid(Expected).name()))};
 		}
 	}
 
@@ -297,7 +288,7 @@ namespace lib2::test
 	{
 		if (std::ranges::find(r, member) == std::ranges::end(r))
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_in failed: {}\n", location.file_name(), location.line(), message)};
+			throw assert_exception{lib2::format<"({}:{}) assert_in failed: {}\n">(location.file_name(), location.line(), message)};
 		}
 	}
 
@@ -307,7 +298,7 @@ namespace lib2::test
 	{
 		if (std::ranges::find(r, member) != std::end(r))
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_not_in failed: {}\n", location.file_name(), location.line(), message)};
+			throw assert_exception{lib2::format<"({}:{}) assert_not_in failed: {}\n">(location.file_name(), location.line(), message)};
 		}
 	}
 
@@ -326,7 +317,7 @@ namespace lib2::test
 			return;
 		}
 
-		throw assert_exception{lib2::format("({}:{}) assert_throws failed: {}\nExpected {} to be thrown, but didn't", location.file_name(), location.line(), message, typeid(T).name())};
+		throw assert_exception{lib2::format<"({}:{}) assert_throws failed: {}\nExpected {} to be thrown, but didn't">(location.file_name(), location.line(), message, typeid(T).name())};
 	}
 
 	export
@@ -344,7 +335,7 @@ namespace lib2::test
 		const auto difference {std::abs(actual - expected)};
 		if (difference > delta)
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_almost_equal failed: {}\n{}Difference: {}\n", location.file_name(), location.line(), message, details::output(actual, expected), difference)};
+			throw assert_exception{lib2::format<"({}:{}) assert_almost_equal failed: {}\n{}Difference: {}\n">(location.file_name(), location.line(), message, output(actual, expected), difference)};
 		}
 	}
 
@@ -355,7 +346,7 @@ namespace lib2::test
 		const auto difference {std::abs(actual - expected)};
 		if (difference <= delta)
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_not_almost_equal failed: {}\n{}Difference: {}\n", location.file_name(), location.line(), message, details::output(actual, expected), difference)};
+			throw assert_exception{lib2::format<"({}:{}) assert_not_almost_equal failed: {}\n{}Difference: {}\n">(location.file_name(), location.line(), message, output(actual, expected), difference)};
 		}
 	}
 
@@ -365,7 +356,7 @@ namespace lib2::test
 	{
 		if (!(actual > expected))
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_greater failed: {}\n{}", location.file_name(), location.line(), message, details::output(actual, expected))};
+			throw assert_exception{lib2::format<"({}:{}) assert_greater failed: {}\n{}">(location.file_name(), location.line(), message, output(actual, expected))};
 		}
 	}
 
@@ -375,7 +366,7 @@ namespace lib2::test
 	{
 		if (!(actual >= expected))
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_greater_equal failed: {}\n{}", location.file_name(), location.line(), message, details::output(actual, expected))};
+			throw assert_exception{lib2::format<"({}:{}) assert_greater_equal failed: {}\n{}">(location.file_name(), location.line(), message, output(actual, expected))};
 		}
 	}
 
@@ -385,7 +376,7 @@ namespace lib2::test
 	{
 		if (!(actual < expected))
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_less failed: {}\n{}", location.file_name(), location.line(), message, details::output(actual, expected))};
+			throw assert_exception{lib2::format<"({}:{}) assert_less failed: {}\n{}">(location.file_name(), location.line(), message, output(actual, expected))};
 		}
 	}
 
@@ -395,7 +386,7 @@ namespace lib2::test
 	{
 		if (!(actual <= expected))
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_less_equal failed: {}\n{}", location.file_name(), location.line(), message, details::output(actual, expected))};
+			throw assert_exception{lib2::format<"({}:{}) assert_less_equal failed: {}\n{}">(location.file_name(), location.line(), message, output(actual, expected))};
 		}
 	}
 
@@ -413,7 +404,7 @@ namespace lib2::test
 		const auto mismatch {std::ranges::mismatch(actual, end1, expected, end2, std::move(pred), std::move(proj1), std::move(proj2))};
 		if (mismatch.in1 != end1)
 		{
-			throw assert_exception{lib2::format("({}:{}) assert_ranges_equal failed: {}\n{}", location.file_name(), location.line(), message, details::output(actual, mismatch.in1, end1, expected, mismatch.in2, end2))};
+			throw assert_exception{lib2::format<"({}:{}) assert_ranges_equal failed: {}\n{}">(location.file_name(), location.line(), message, output(actual, mismatch.in1, end1, expected, mismatch.in2, end2))};
 		}
 	}
 

@@ -1,9 +1,7 @@
 export module lib2.tests.io:ostream;
 
 import std;
-
-import lib2.test;
-import lib2.io;
+import lib2;
 
 namespace lib2::tests::io
 {
@@ -18,12 +16,12 @@ namespace lib2::tests::io
         {
             lib2::ostringstream ss;
 
-            ss << 'H'
-               << 'E'
-               << 'L'
-               << 'L'
-               << 'O'
-               << '!';
+            ss.put('H');
+            ss.put('E');
+            ss.put('L');
+            ss.put('L');
+            ss.put('O');
+            ss.put('!');
 
             lib2::test::assert_equal(ss.view(), "HELLO!");
         }
@@ -40,7 +38,7 @@ namespace lib2::tests::io
         {
             lib2::ostringstream ss;
 
-            ss << "Jello!";
+            ss.write("Jello!");
 
             lib2::test::assert_equal(ss.view(), "Jello!");
         }
@@ -57,27 +55,27 @@ namespace lib2::tests::io
         {
             lib2::ostringstream ss;
 
-            ss << std::string{"Jello!"};
+            ss.write(std::string{"Jello!"});
 
             lib2::test::assert_equal(ss.view(), "Jello!");
         }
     };
 
-    export
-    class ostream_istream_test : public lib2::test::test_case
-    {
-    public:
-        ostream_istream_test()
-            : lib2::test::test_case{"ostream_istream"} {}
+    // export
+    // class ostream_istream_test : public lib2::test::test_case
+    // {
+    // public:
+    //     ostream_istream_test()
+    //         : lib2::test::test_case{"ostream_istream"} {}
 
-        void operator()() final
-        {
-            lib2::istringstream is{"Howdy!"};
-            lib2::ostringstream os;
+    //     void operator()() final
+    //     {
+    //         lib2::istringstream is{"Howdy!"};
+    //         lib2::ostringstream os;
 
-            os << is;
+    //         os << is;
 
-            lib2::test::assert_equal(os.view(), "Howdy!");
-        }
-    };
+    //         lib2::test::assert_equal(os.view(), "Howdy!");
+    //     }
+    // };
 }

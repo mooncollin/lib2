@@ -14,10 +14,9 @@ namespace lib2::tests::fmt
     lib2::test::test_suite get_tests()
     {
         lib2::test::test_suite suite{"fmt library tests"};
-        suite.add_test_case<character_test>();
+        suite.add_test_case<character_fmt>();
         
         suite.add_test_case<string_fmt_test>();
-        suite.add_test_case<string_fmt_string_test>();
         suite.add_test_case<string_unicode_fmt_test>();
         suite.add_test_case<string_debug_fmt_test>();
         

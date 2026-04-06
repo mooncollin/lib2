@@ -23,7 +23,7 @@ public:
     {
         for (std::size_t i {0}; i < fstreams.size(); ++i)
         {
-            fstreams[i] << "Hello World! My name is " << name() << i << '\n';
+            lib2::format_to<"Hello World! My name is {}{}\n">(fstreams[i], name(), i);
         }
     }
 
@@ -56,7 +56,7 @@ public:
     {
         for (std::size_t i {0}; i < fstreams.size(); ++i)
         {
-            fstreams[i] << "Hello World! My name is " << name() << i << '\n';
+            lib2::format_to<"Hello World! My name is {}{}\n">(fstreams[i], name(), i);
         }
     }
 

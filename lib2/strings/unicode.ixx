@@ -114,7 +114,7 @@ namespace lib2
                     return;
                 }
 
-                uint32_t cp = b & ((1 << (8 - num_bytes - 1)) - 1);
+                std::uint32_t cp = b & ((1 << (8 - num_bytes - 1)) - 1);
                 for (std::size_t i {1}; i < num_bytes; ++i)
                 {
                     if (it_ == end_)

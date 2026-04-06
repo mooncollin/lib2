@@ -292,6 +292,8 @@ namespace lib2
             init_buf_ptrs();
         }
 
+        using basic_ostream<CharT>::write;
+
         constexpr void write(const char_type* s, size_type count) override
         {
             if ((this->amount_written() + count) > buf.capacity())
@@ -509,6 +511,8 @@ namespace lib2
             init_buf_ptrs();
         }
 
+        using basic_ostream<CharT>::write;
+
         constexpr void write(const char_type* s, size_type count) override
         {
             const auto written {this->pcur() - this->pbeg()};
@@ -621,21 +625,5 @@ namespace lib2
     void swap(basic_stringstream<CharT, Traits, Alloc>& lhs, basic_stringstream<CharT, Traits, Alloc>& rhs) noexcept
     {
         lhs.swap(rhs);
-    }
-
-    export
-    template<class CharT, class Traits, class Alloc>
-    basic_ostream<CharT>& operator<<(basic_ostream<CharT>& os, const basic_ostringstream<CharT, Traits, Alloc>& ss)
-    {
-        return os << ss.view();
-    }
-
-    export
-    template<class CharT, class Traits, class Alloc>
-    basic_ostream<CharT>& operator<<(basic_ostream<CharT>& os, basic_istringstream<CharT, Traits, Alloc>& ss)
-    {
-        os << ss.view();
-        ss.str({});
-        return os;
     }
 }

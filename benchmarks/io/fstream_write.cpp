@@ -17,7 +17,7 @@ public:
 
     void operator()() final
     {
-        file << "Hello World! My name is " << name() << '\n';
+        lib2::format_to<"Hello World! My name is {}\n">(file, name());
     }
 
     void tear_down() final
@@ -45,7 +45,7 @@ public:
 
     void operator()() final
     {
-        file << "Hello World! My name is " << name() << '\n';
+        lib2::format_to<"Hello World! My name is {}\n">(file, name());
     }
 
     void tear_down() final

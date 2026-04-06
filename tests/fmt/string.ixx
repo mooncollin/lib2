@@ -15,38 +15,17 @@ namespace lib2::tests::fmt
         {
             const std::string_view base {"Hello, world!"};
 
-            lib2::ostringstream ss;
-            lib2::to_stream(ss, base, {});
-            lib2::test::assert_equal(ss.view(), base);
+            const auto compile_str1 {lib2::format<"{}">(base)};
+            lib2::test::assert_equal(compile_str1, base);
 
-            ss.str({});
-            lib2::to_stream(ss, base, {.align = lib2::align_type::right, .width=15});
-            lib2::test::assert_equal(ss.view(), "  Hello, world!");
-        }
-    };
+            const auto compile_str2 {lib2::format<"{:>15}">(base)};
+            lib2::test::assert_equal(compile_str2, "  Hello, world!");
 
-    export
-    class string_fmt_string_test : public lib2::test::test_case
-    {
-    public:
-        string_fmt_string_test()
-            : lib2::test::test_case{"string_fmt_string"} {}
+            const auto str1 {lib2::format("{}", base)};
+            lib2::test::assert_equal(str1, base);
 
-        void operator()() final
-        {
-            const std::string_view base {"Hello, world!"};
-
-            std::string str {lib2::format("{}", base)};
-            lib2::test::assert_equal(str, base);
-
-            str = lib2::format("{:}", base);
-            lib2::test::assert_equal(str, base);
-
-            str = lib2::format("{0:}", base);
-            lib2::test::assert_equal(str, base);
-
-            str = lib2::format("{:>15}", base);
-            lib2::test::assert_equal(str, "  Hello, world!");
+            const auto str2 {lib2::format("{:>15}", base)};
+            lib2::test::assert_equal(str2, "  Hello, world!");
         }
     };
 
@@ -61,7 +40,19 @@ namespace lib2::tests::fmt
         {
             const std::string_view base {"Hello 😀 world!"};
 
-            std::string str {lib2::format("{}", base)};
+            std::string str {lib2::format<"{}">(base)};
+            lib2::test::assert_equal(str, base);
+
+            str = lib2::format<"{:}">(base);
+            lib2::test::assert_equal(str, base);
+
+            str = lib2::format<"{0:}">(base);
+            lib2::test::assert_equal(str, base);
+
+            str = lib2::format<"{:>15}">(base);
+            lib2::test::assert_equal(str, " Hello 😀 world!");
+
+            str = lib2::format("{}", base);
             lib2::test::assert_equal(str, base);
 
             str = lib2::format("{:}", base);
@@ -86,7 +77,10 @@ namespace lib2::tests::fmt
         {
             const std::string_view base {"Hello 😀 world!"};
 
-            std::string str {lib2::format("{:?}", base)};
+            std::string str {lib2::format<"{:?}">(base)};
+            lib2::test::assert_equal(str, "\"Hello \\u1f600 world!\"");
+
+            str = lib2::format("{:?}", base);
             lib2::test::assert_equal(str, "\"Hello \\u1f600 world!\"");
         }
     };

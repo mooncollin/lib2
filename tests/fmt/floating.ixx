@@ -15,20 +15,11 @@ namespace lib2::tests::fmt
 
         void operator()() final
         {
-            lib2::ostringstream ss;
-
-            char buf[30] {};
-            
             for (T v {min_num}; v < max_num; v += T{0.01})
             {
                 const auto expected {std::format("{}", v)};
-                ss.str({});
-                ss << v;
-                lib2::test::assert_equal(ss.view(), expected);
-                ss.str({});
-                lib2::format_to(ss, "{}", v);
-                std::to_chars(buf, buf + sizeof(buf), v);
-                lib2::test::assert_equal(ss.view(), expected);
+                const auto str {lib2::format<"{}">(v)};
+                lib2::test::assert_equal(str, expected);
             }
         }
     };
@@ -42,25 +33,21 @@ namespace lib2::tests::fmt
 
         void operator()() final
         {
-            lib2::ostringstream ss;
-            
+            std::string str;
+
             for (double v {-100.0}; v <= 100.0; v += .01)
             {
-                ss.str({});
-                lib2::format_to(ss, "{:.2e}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:.2e}", v));
+                str = lib2::format<"{:.2e}">(v);
+                lib2::test::assert_equal(str, std::format("{:.2e}", v));
 
-                ss.str({});
-                lib2::format_to(ss, "{:.2a}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:.2a}", v));
+                str = lib2::format<"{:.2a}">(v);
+                lib2::test::assert_equal(str, std::format("{:.2a}", v));
 
-                ss.str({});
-                lib2::format_to(ss, "{:.2f}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:.2f}", v));
+                str = lib2::format<"{:.2f}">(v);
+                lib2::test::assert_equal(str, std::format("{:.2f}", v));
 
-                ss.str({});
-                lib2::format_to(ss, "{:.2g}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:.2g}", v));
+                str = lib2::format<"{:.2g}">(v);
+                lib2::test::assert_equal(str, std::format("{:.2g}", v));
             }
         }
     };

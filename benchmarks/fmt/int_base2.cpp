@@ -13,46 +13,47 @@ protected:
     }
 };
 
-class ostream_bench : public int_benchmark
+class ostream_bench final : public int_benchmark
 {
 public:
     ostream_bench()
         : int_benchmark{"std::ostream"} {}
 
-    void operator()() final
+    void operator()()
     {
+        ss.str({});
         ss << std::setbase(2) << std::showbase << this->get_int();
     }
 private:
     std::ostringstream ss;
 };
 
-class format_bench : public int_benchmark
+class format_bench final : public int_benchmark
 {
 public:
     format_bench()
         : int_benchmark{"std::format"} {}
 
-    void operator()() final
+    void operator()()
     {
-        std::format_to(std::back_inserter(str), "{:#b}", this->get_int());
+        const auto str {std::format("{:#b}", this->get_int())};
+        lib2::benchmarking::do_not_optimize(str);
     }
 private:
     std::string str;
 };
 
-class lib2_format : public int_benchmark
+class lib2_format final : public int_benchmark
 {
 public:
     lib2_format()
         : int_benchmark{"lib2::format"} {}
 
-    void operator()() final
+    void operator()()
     {
-        lib2::format_to(ss, "{:#b}", this->get_int());
+        const auto str {lib2::format<"{:#b}">(this->get_int())};
+        lib2::benchmarking::do_not_optimize(str);
     }
-private:
-    lib2::ostringstream ss;
 };
 
 int main()

@@ -7,32 +7,62 @@
   },
   "configurePresets": [
     {
-      "name": "debug",
-      "displayName": "Debug",
+      "name": "base-debug",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/debug",
+      "hidden": true,
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
-      "name": "release",
-      "displayName": "Release",
+      "name": "base-release",
+      "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "windows-debug",
+      "displayName": "Windows Debug",
+      "inherits": "base-debug",
+      "binaryDir": "${sourceDir}/build/windows/debug"
+    },
+    {
+      "name": "windows-release",
+      "displayName": "Windows Release",
+      "inherits": "base-release",
+      "binaryDir": "${sourceDir}/build/windows/release"
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "Linux Debug",
+      "inherits": "base-debug",
+      "binaryDir": "${sourceDir}/build/linux/debug"
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux Release",
+      "inherits": "base-release",
+      "binaryDir": "${sourceDir}/build/linux/release"
     }
   ],
   "buildPresets": [
     {
-      "name": "debug",
-      "configurePreset": "debug"
+      "name": "windows-debug",
+      "configurePreset": "windows-debug"
     },
     {
-      "name": "release",
-      "configurePreset": "release"
+      "name": "windows-release",
+      "configurePreset": "windows-release"
+    },
+    { 
+      "name": "linux-debug",
+      "configurePreset": "linux-debug"
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release"
     }
   ]
 }

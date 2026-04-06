@@ -7,12 +7,6 @@ import lib2.fmt;
 
 import :benchmark_output;
 
-namespace lib2
-{
-    template<class Rep, class Period>
-    duration_fmt<Rep, Period> format_of(std::chrono::duration<Rep, Period>);
-}
-
 namespace lib2::benchmarking
 {
     template<class Rep, class Period>
@@ -22,14 +16,14 @@ namespace lib2::benchmarking
         {
             if (dur.count() < 10000 && (dur.count() % 1000 || dur.count() == 0))
             {
-                return lib2::format("{:%Q%q}", dur);
+                return lib2::format<"{}">(dur);
             }
         }
         else
         {
             if (dur.count() < 10000)
             {
-                return lib2::format("{:.2f}{:%q}", dur.count(), dur);
+                return lib2::format<"{:.2f}{:%q}">(dur.count(), dur);
             }
         }
 
@@ -61,11 +55,11 @@ namespace lib2::benchmarking
         {
             if constexpr (std::integral<Rep>)
             {
-                return lib2::format("{:%Q%q}", dur);
+                return lib2::format<"{}">(dur);
             }
             else
             {
-                return lib2::format("{:.2f}{:%q}", dur.count(), dur);
+                return lib2::format<"{:.2f}{:%q}">(dur.count(), dur);
             }
         }
     }
@@ -89,19 +83,19 @@ namespace lib2::benchmarking
         {
             name_column_width       = std::max(name_column_width, name.size());
             time_column_width       = std::max(time_column_width, best_fit_duration_string(result.total_time).size());
-            iterations_column_width = std::max(iterations_column_width, lib2::formatted_size("{}", result.num_iterations));
-            multiple_column_width   = std::max(multiple_column_width, lib2::formatted_size("{:.2f}", calc_perf_multiple(result, results.back().second)));
+            iterations_column_width = std::max(iterations_column_width, lib2::formatted_size<"{}">(result.num_iterations));
+            multiple_column_width   = std::max(multiple_column_width, lib2::formatted_size<"{:.2f}">(calc_perf_multiple(result, results.back().second)));
         }
 
         const auto banner_width {name_column_width + 1 + time_column_width + 1 + iterations_column_width + 1 + multiple_column_width};
-        const auto banner_fill {io_fill('-', banner_width)};
         
-        stream << banner_fill;
-        lib2::format_to(stream, "\n{:<{}} {:>{}} {:>{}} {:<{}}\n", "Benchmark", name_column_width, "Time", time_column_width, "Iterations", iterations_column_width, "Multiple", multiple_column_width);
-        stream << banner_fill << '\n';
+        stream.fill('-', banner_width);
+        lib2::format_to<"\n{:<{}} {:>{}} {:>{}} {:<{}}\n">(stream, "Benchmark", name_column_width, "Time", time_column_width, "Iterations", iterations_column_width, "Multiple", multiple_column_width);
+        stream.fill('-', banner_width);
+        stream.put('\n');
         for (const auto& [name, result] : results)
         {
-            lib2::format_to(stream, "{:<{}} {:>{}} {:>{}} {:<{}.2f}\n", name, name_column_width, best_fit_duration_string(result.total_time), time_column_width, result.num_iterations, iterations_column_width, calc_perf_multiple(result, results.back().second), multiple_column_width);
+            lib2::format_to<"{:<{}} {:>{}} {:>{}} {:<{}.2f}\n">(stream, name, name_column_width, best_fit_duration_string(result.total_time), time_column_width, result.num_iterations, iterations_column_width, calc_perf_multiple(result, results.back().second), multiple_column_width);
         }
     }
 }

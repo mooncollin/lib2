@@ -5,225 +5,225 @@ import lib2;
 namespace lib2::tests::strings
 {
     export
-    class is_ascii_alpha final : public lib2::test::test_case
+    class isalpha_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_alpha()
-            : lib2::test::test_case{"is_ascii_alpha"} {}
+        isalpha_ascii()
+            : lib2::test::test_case{"isalpha_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_alpha(c), static_cast<bool>(std::isalpha(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::isalpha_ascii(c), static_cast<bool>(std::isalpha(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class is_ascii_digit final : public lib2::test::test_case
+    class isdigit_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_digit()
-            : lib2::test::test_case{"is_ascii_digit"} {}
+        isdigit_ascii()
+            : lib2::test::test_case{"isdigit_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_digit(c), static_cast<bool>(std::isdigit(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::isdigit_ascii(c), static_cast<bool>(std::isdigit(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class is_ascii_upper final : public lib2::test::test_case
+    class isupper_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_upper()
-            : lib2::test::test_case{"is_ascii_upper"} {}
+        isupper_ascii()
+            : lib2::test::test_case{"isupper_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_upper(c), static_cast<bool>(std::isupper(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::isupper_ascii(c), static_cast<bool>(std::isupper(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class is_ascii_lower final : public lib2::test::test_case
+    class islower_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_lower()
-            : lib2::test::test_case{"is_ascii_lower"} {}
+        islower_ascii()
+            : lib2::test::test_case{"islower_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_lower(c), static_cast<bool>(std::islower(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::islower_ascii(c), static_cast<bool>(std::islower(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class is_ascii_alnum final : public lib2::test::test_case
+    class isalnum_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_alnum()
-            : lib2::test::test_case{"is_ascii_alnum"} {}
+        isalnum_ascii()
+            : lib2::test::test_case{"isalnum_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_alnum(c), static_cast<bool>(std::isalnum(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::isalnum_ascii(c), static_cast<bool>(std::isalnum(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class is_ascii_xdigit final : public lib2::test::test_case
+    class isxdigit_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_xdigit()
-            : lib2::test::test_case{"is_ascii_xdigit"} {}
+        isxdigit_ascii()
+            : lib2::test::test_case{"isxdigit_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_xdigit(c), static_cast<bool>(std::isxdigit(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::isxdigit_ascii(c), static_cast<bool>(std::isxdigit(static_cast<unsigned char>(c))), lib2::format<"For char '{:d}'">(c));
             }
         }
     };
 
     export
-    class is_ascii_space final : public lib2::test::test_case
+    class isspace_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_space()
-            : lib2::test::test_case{"is_ascii_space"} {}
+        isspace_ascii()
+            : lib2::test::test_case{"isspace_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_space(c), static_cast<bool>(std::isspace(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::isspace_ascii(c), static_cast<bool>(std::isspace(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class is_ascii_blank final : public lib2::test::test_case
+    class isblank_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_blank()
-            : lib2::test::test_case{"is_ascii_blank"} {}
+        isblank_ascii()
+            : lib2::test::test_case{"isblank_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_blank(c), static_cast<bool>(std::isblank(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::isblank_ascii(c), static_cast<bool>(std::isblank(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class is_ascii_cntrl final : public lib2::test::test_case
+    class iscntrl_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_cntrl()
-            : lib2::test::test_case{"is_ascii_cntrl"} {}
+        iscntrl_ascii()
+            : lib2::test::test_case{"iscntrl_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_cntrl(c), static_cast<bool>(std::iscntrl(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::iscntrl_ascii(c), static_cast<bool>(std::iscntrl(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class is_ascii_graph final : public lib2::test::test_case
+    class isgraph_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_graph()
-            : lib2::test::test_case{"is_ascii_graph"} {}
+        isgraph_ascii()
+            : lib2::test::test_case{"isgraph_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_graph(c), static_cast<bool>(std::isgraph(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::isgraph_ascii(c), static_cast<bool>(std::isgraph(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class is_ascii_print final : public lib2::test::test_case
+    class isprint_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_print()
-            : lib2::test::test_case{"is_ascii_print"} {}
+        isprint_ascii()
+            : lib2::test::test_case{"isprint_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_print(c), static_cast<bool>(std::isprint(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::isprint_ascii(c), static_cast<bool>(std::isprint(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class is_ascii_punct final : public lib2::test::test_case
+    class ispunct_ascii final : public lib2::test::test_case
     {
     public:
-        is_ascii_punct()
-            : lib2::test::test_case{"is_ascii_punct"} {}
+        ispunct_ascii()
+            : lib2::test::test_case{"ispunct_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::is_ascii_punct(c), static_cast<bool>(std::ispunct(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::ispunct_ascii(c), static_cast<bool>(std::ispunct(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class ascii_to_lower final : public lib2::test::test_case
+    class tolower_ascii final : public lib2::test::test_case
     {
     public:
-        ascii_to_lower()
-            : lib2::test::test_case{"ascii_to_lower"} {}
+        tolower_ascii()
+            : lib2::test::test_case{"tolower_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::ascii_to_lower(c), static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::tolower_ascii(c), static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
             }
         }
     };
 
     export
-    class ascii_to_upper final : public lib2::test::test_case
+    class toupper_ascii final : public lib2::test::test_case
     {
     public:
-        ascii_to_upper()
-            : lib2::test::test_case{"ascii_to_upper"} {}
+        toupper_ascii()
+            : lib2::test::test_case{"toupper_ascii"} {}
         
         void operator()()
         {
             for (char c {0}; c < 127; ++c)
             {
-                lib2::test::assert_equal(lib2::ascii_to_upper(c), static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
+                lib2::test::assert_equal(lib2::toupper_ascii(c), static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
             }
         }
     };

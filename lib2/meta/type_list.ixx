@@ -20,8 +20,8 @@ namespace lib2
         template<typename Head, typename... Tail>
         struct at_<0, Head, Tail...> : std::type_identity<Head> {};
     public:
-        static constexpr constexpr_value<sizeof...(Ts)> size;
-        static constexpr constexpr_value<size() == 0> empty;
+        static constexpr constexpr_value<sizeof...(Ts)> size {};
+        static constexpr constexpr_value<size() == 0> empty {};
 
         template<std::size_t I>
             requires(I < size())

@@ -413,7 +413,7 @@ namespace lib2
         while (is.get())
         {
             is.consume([](const auto begin, const auto end) {
-                return std::find_if_not(begin, end, is_ascii_space);
+                return std::find_if_not(begin, end, isspace_ascii);
             });
             if (is.read_available())
             {
@@ -447,10 +447,11 @@ namespace lib2
         while (is.get())
         {
             is.consume([&](const auto begin, auto end) {
-                end = std::find_if(begin, end, is_ascii_space);
+                end = std::find_if(begin, end, isspace_ascii);
                 str.append(begin, end);
                 return end;
             });
+
             if (is.read_available())
             {
                 break;
@@ -458,5 +459,34 @@ namespace lib2
         }
 
         return !str.empty();
+    }
+
+    export
+    bool getline(text_istream& is, std::string& str, const char delim)
+    {
+        str.clear();
+
+        while (is.get())
+        {
+            is.consume([&](const auto begin, auto end) {
+                end = std::find(begin, end, delim);
+                str.append(begin, end);
+                return end;
+            });
+
+            if (is.read_available())
+            {
+                is.bump();
+                return true;
+            }
+        }
+
+        return !str.empty();
+    }
+
+    export
+    bool getline(text_istream& is, std::string& str)
+    {
+        return getline(is, str, '\n');
     }
 }

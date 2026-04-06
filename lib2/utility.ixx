@@ -41,4 +41,50 @@ namespace lib2
 		private:
 			clock_t::time_point start_time_;
 	};
+
+	export
+	template<class T>
+	struct mutable_wrapper
+	{
+		constexpr mutable_wrapper() = default;
+
+		constexpr mutable_wrapper(const T& other)
+			: value{other} {}
+
+		constexpr mutable_wrapper(T&& other) noexcept(std::is_nothrow_move_constructible_v<T>)
+			: value{std::move(other)} {}
+
+		template<class... Args>
+		constexpr mutable_wrapper(Args&&... args)
+			: value{std::forward<Args>(args)...} {}
+
+		mutable T value;
+
+		constexpr operator T&() & noexcept
+		{
+			return value;
+		}
+
+		constexpr operator const T&() const& noexcept
+		{
+			return value;
+		}
+
+		constexpr operator T&&() && noexcept
+		{
+			return std::move(value);
+		}
+
+		constexpr mutable_wrapper& operator=(const T& other)
+		{
+			value = other;
+			return *this;
+		}
+
+		constexpr mutable_wrapper& operator=(T&& other)
+		{
+			value = std::move(other);
+			return *this;
+		}
+	};
 }

@@ -10,13 +10,12 @@ Any of the public or private APIs here can change at a moments notice. All libra
 | ------- | ----------- | ----------- | ----------- | ---------- |
 | platform | Probe the type of architecture, operating system, compiler, and C++ version you are using at compile time | ✅ | ⚠️ | ❌ |
 | type_traits | Additional type traits | ✅ | ⚠️ | ❌ |
-| strings | More string abstractions and algorithms | ⚠️ | ⚠️ | ❌ |
-| io | A reimagining of C++ streams and other io functionality | ✅ | ⚠️ | ❌ |
-| fmt | A reimagining of fmt utilizing the io library | ✅ | ⚠️ | ❌ |
-| test | A test case framework | ✅ | ⚠️ | ❌ |
-| benchmarking | A benchmarking framework | ✅ | ⚠️ | ❌ |
-| match | A pattern matching framework | ⚠️ | ⚠️ | ❌ |
-| scan | The flip side to fmt. A modern approach to scanf | ⚠️ | ⚠️ | ❌ |
+| strings | More string abstractions and algorithms | ✅ | ⚠️ | ❌ |
+| io | A reimagining of C++ streams and other io functionality | ⚠️ | ⚠️ | ❌ |
+| fmt | A reimagining of std::format utilizing the io library | ✅ | ⚠️ | ❌ |
+| test | A test case framework | ✅ | ✅ | ❌ |
+| benchmarking | A benchmarking framework | ✅ | ✅ | ❌ |
+| scan | The flip side to std::format. A modern approach to scanf | ⚠️ | ⚠️ | ❌ |
 
 ✅: "Done"
 
@@ -60,15 +59,15 @@ std::ostringstream  2480.17ms   30000000 1.00
 ```
 ### fstream
 ```
---------------------------------------------
-Benchmark           Time Iterations Multiple
---------------------------------------------
-lib2_fstream          8s  137382251 8.11    
-lib2_async_fstream    8s  117637319 6.95    
-lib2_fstream_fmt      8s   64894826 3.83    
-fstream               8s   21369867 1.26    
-fprintf               8s   19823362 1.17    
-fstream_print         8s   16937607 1.00
+---------------------------------------------
+Benchmark            Time Iterations Multiple
+---------------------------------------------
+lib2_fstream_write     8s  120557283 6.79
+lib2_fstream_fmt       8s  103227193 5.81
+lib2_fstream_rt_fmt    8s   65908364 3.71
+fstream                8s   25579747 1.44
+fprintf                8s   21392484 1.20
+fstream_print          8s   17761981 1.00
 ```
 ## fmt
 ```
@@ -76,20 +75,18 @@ Default formatting of std::uint32:
 ----------------------------------------
 Benchmark       Time Iterations Multiple
 ----------------------------------------
-std::to_string    5s   80722295 7.56
-lib2::ostream     5s   63618137 5.96
-std::format       5s   49360006 4.62
-lib2::format      5s   43089415 4.03
-std::ostream      5s   10683052 1.00
+std::to_string    5s   78459581 7.39
+lib2::format      5s   55179142 5.20
+std::format       5s   41335222 3.89
+std::ostream      5s   10620343 1.00
 ```
 ```
 Default formatting of std::int32:
 ----------------------------------------
 Benchmark       Time Iterations Multiple
 ----------------------------------------
-std::to_string    5s   63858623 6.30
-lib2::ostream     5s   55333765 5.46
-lib2::format      5s   40380979 3.98
-std::format       5s   39523016 3.90
-std::ostream      5s   10138718 1.00
+std::to_string    5s   70156031 6.88
+lib2::format      5s   49372213 4.84
+std::format       5s   34091229 3.34
+std::ostream      5s   10204504 1.00
 ```

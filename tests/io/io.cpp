@@ -23,7 +23,7 @@ namespace lib2::tests::io
         suite.add_test_case<ostream_char_test>();
         suite.add_test_case<ostream_string_literal_test>();
         suite.add_test_case<ostream_string_test>();
-        suite.add_test_case<ostream_istream_test>();
+        // suite.add_test_case<ostream_istream_test>();
 
         suite.add_test_case<istream_bump_test>();
         suite.add_test_case<istream_read_test>();

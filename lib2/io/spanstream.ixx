@@ -38,6 +38,8 @@ namespace lib2
         {
             this->setp(s.data(), s.data() + s.size());
         }
+
+        using basic_ostream<T>::write;
         
         constexpr void write(const T* vals, size_type count) override
         {

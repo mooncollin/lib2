@@ -426,42 +426,42 @@ int main()
     format_construct.add_benchmark<string_format_construct>();
     format_construct.add_benchmark<lazy_string_format_construct>();
 
-    lib2::cout << "SIZEOF(std::string) => " << sizeof(std::string) << '\n';
-    lib2::cout << "SIZEOF(lazy_string) => " << sizeof(lib2::lazy_string) << '\n';
+    lib2::print<"SIZEOF(std::string) => {}\n">(sizeof(std::string));
+    lib2::print<"SIZEOF(lazy_string) => {}\n">(sizeof(lib2::lazy_string));
 
-    lib2::cout << "Default Constructor:\n";
+    lib2::print<"Default Constructor:\n">();
     lib2::benchmarking::print_benchmarks(ctx, default_constructor);
 
-    lib2::cout << "\nString Literal Construct SSO:\n";
+    lib2::print<"\nString Literal Construct SSO:\n">();
     lib2::benchmarking::print_benchmarks(ctx, literal_construct_sso);
 
-    lib2::cout << "\nString Literal Construct:\n";
+    lib2::print<"\nString Literal Construct:\n">();
     lib2::benchmarking::print_benchmarks(ctx, literal_construct);
 
-    lib2::cout << "\nCopying std::string SSO:\n";
+    lib2::print<"\nCopying std::string SSO:\n">();
     lib2::benchmarking::print_benchmarks(ctx, copy_std_string_sso);
 
-    lib2::cout << "\nCopying std::string:\n";
+    lib2::print<"\nCopying std::string:\n">();
     lib2::benchmarking::print_benchmarks(ctx, copy_std_string);
 
-    lib2::cout << "\nMoving std::string SSO:\n";
+    lib2::print<"\nMoving std::string SSO:\n">();
     lib2::benchmarking::print_benchmarks(ctx, move_std_string_soo);
 
-    lib2::cout << "\nMoving std::string:\n";
+    lib2::print<"\nMoving std::string:\n">();
     lib2::benchmarking::print_benchmarks(ctx, move_std_string);
 
-    lib2::cout << "\nCopy Constructor SSO:\n";
+    lib2::print<"\nCopy Constructor SSO:\n">();
     lib2::benchmarking::print_benchmarks(ctx, copy_constructor_sso);
 
-    lib2::cout << "\nCopy Constructor:\n";
+    lib2::print<"\nCopy Constructor:\n">();
     lib2::benchmarking::print_benchmarks(ctx, copy_constructor);
 
-    lib2::cout << "\nMove Constructor SSO:\n";
+    lib2::print<"\nMove Constructor SSO:\n">();
     lib2::benchmarking::print_benchmarks(ctx, move_constructor_sso);
 
-    lib2::cout << "\nMove Constructor:\n";
+    lib2::print<"\nMove Constructor:\n">();
     lib2::benchmarking::print_benchmarks(ctx, move_constructor);
 
-    lib2::cout << "\nstd::format call:\n";
+    lib2::print<"\nstd::format call:\n">();
     lib2::benchmarking::print_benchmarks(ctx, format_construct);
 }

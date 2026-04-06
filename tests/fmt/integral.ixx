@@ -25,17 +25,12 @@ namespace lib2::tests::fmt
 
         void operator()() final
         {
-            lib2::ostringstream ss;
-            
             for (T v {min_num}; v < max_num; ++v)
             {
                 const auto expected {std::to_string(v)};
-                ss.str({});
-                ss << v;
-                lib2::test::assert_equal(ss.view(), expected);
-                ss.str({});
-                lib2::format_to(ss, "{}", v);
-                lib2::test::assert_equal(ss.view(), expected);
+
+                const auto str {lib2::format<"{}">(v)};
+                lib2::test::assert_equal(str, expected);
             }
         }
     };
@@ -49,49 +44,37 @@ namespace lib2::tests::fmt
 
         void operator()() final
         {
-            lib2::ostringstream ss;
-            
             for (int v {-10000}; v <= 10000; ++v)
             {
-                ss.str({});
-                lib2::format_to(ss, "{:b}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:b}", v));
+                std::string str {lib2::format<"{:b}">(v)};
+                lib2::test::assert_equal(str, std::format("{:b}", v));
 
-                ss.str({});
-                lib2::format_to(ss, "{:B}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:b}", v));
+                str = lib2::format<"{:B}">(v);
+                lib2::test::assert_equal(str, std::format("{:b}", v));
 
-                ss.str({});
-                lib2::format_to(ss, "{:#b}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:#b}", v));
+                str = lib2::format<"{:#b}">(v);
+                lib2::test::assert_equal(str, std::format("{:#b}", v));
 
-                ss.str({});
-                lib2::format_to(ss, "{:#B}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:#B}", v));
+                str = lib2::format<"{:#B}">(v);
+                lib2::test::assert_equal(str, std::format("{:#B}", v));
                 
-                ss.str({});
-                lib2::format_to(ss, "{:o}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:o}", v));
+                str = lib2::format<"{:o}">(v);
+                lib2::test::assert_equal(str, std::format("{:o}", v));
 
-                ss.str({});
-                lib2::format_to(ss, "{:#o}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:#o}", v));
+                str = lib2::format<"{:#o}">(v);
+                lib2::test::assert_equal(str, std::format("{:#o}", v));
 
-                ss.str({});
-                lib2::format_to(ss, "{:x}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:x}", v));
+                str = lib2::format<"{:x}">(v);
+                lib2::test::assert_equal(str, std::format("{:x}", v));
 
-                ss.str({});
-                lib2::format_to(ss, "{:X}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:X}", v));
+                str = lib2::format<"{:X}">(v);
+                lib2::test::assert_equal(str, std::format("{:X}", v));
 
-                ss.str({});
-                lib2::format_to(ss, "{:#x}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:#x}", v));
+                str = lib2::format<"{:#x}">(v);
+                lib2::test::assert_equal(str, std::format("{:#x}", v));
 
-                ss.str({});
-                lib2::format_to(ss, "{:#X}", v);
-                lib2::test::assert_equal(ss.view(), std::format("{:#X}", v));
+                str = lib2::format<"{:#X}">(v);
+                lib2::test::assert_equal(str, std::format("{:#X}", v));
             }
         }
     };

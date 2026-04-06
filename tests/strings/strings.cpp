@@ -17,20 +17,20 @@ namespace lib2::tests::strings
         suite.add_test_case<lazy_string_sv_construct>();
         suite.add_test_case<lazy_string_string_construct>();
 
-        suite.add_test_case<is_ascii_alpha>();
-        suite.add_test_case<is_ascii_digit>();
-        suite.add_test_case<is_ascii_upper>();
-        suite.add_test_case<is_ascii_lower>();
-        suite.add_test_case<is_ascii_alnum>();
-        suite.add_test_case<is_ascii_xdigit>();
-        suite.add_test_case<is_ascii_space>();
-        suite.add_test_case<is_ascii_blank>();
-        suite.add_test_case<is_ascii_cntrl>();
-        suite.add_test_case<is_ascii_graph>();
-        suite.add_test_case<is_ascii_print>();
-        suite.add_test_case<is_ascii_punct>();
-        suite.add_test_case<ascii_to_lower>();
-        suite.add_test_case<ascii_to_upper>();
+        suite.add_test_case<isalpha_ascii>();
+        suite.add_test_case<isdigit_ascii>();
+        suite.add_test_case<isupper_ascii>();
+        suite.add_test_case<islower_ascii>();
+        suite.add_test_case<isalnum_ascii>();
+        suite.add_test_case<isxdigit_ascii>();
+        suite.add_test_case<isspace_ascii>();
+        suite.add_test_case<isblank_ascii>();
+        suite.add_test_case<iscntrl_ascii>();
+        suite.add_test_case<isgraph_ascii>();
+        suite.add_test_case<isprint_ascii>();
+        suite.add_test_case<ispunct_ascii>();
+        suite.add_test_case<tolower_ascii>();
+        suite.add_test_case<toupper_ascii>();
 
         return std::move(suite);
     }

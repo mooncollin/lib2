@@ -1,369 +1,323 @@
 export module lib2.fmt:parsers;
 
+import std;
+
 import lib2.utility;
 import lib2.compact_optional;
+import lib2.strings;
 
 import :context;
-import :utility;
+import :formatter;
 
 namespace lib2
 {
     export
-    enum class align_type : char
+    struct format_parser
     {
-        left   = '<',
-        right  = '>',
-        center = '^'
+        constexpr auto parse(format_parse_context& ctx) noexcept
+        {
+            return ctx.begin;
+        }
+
+        static constexpr std::size_t parse_unsigned(const char*& begin, const char* const end)
+        {
+            std::size_t value {0};
+            while (begin != end && isdigit_ascii(*begin))
+            {
+                const auto new_value {(value * 10) + (*begin - '0')};
+                if (new_value < value)
+                {
+                    throw format_error{"Invalid format string: Number too large"};
+                }
+                value = new_value;
+                ++begin;
+            }
+
+            return value;
+        }
     };
 
     export
-    constexpr auto parse_fill_align(format_context& ctx, char& fill, align_type& align) noexcept
+    struct fill_align_parser : format_parser
     {
-        auto it {ctx.begin()};
-
-        if (it != ctx.end() && *it != '}')
+        enum class align_type : char
         {
-            switch (*it)
+            left   = '<',
+            right  = '>',
+            center = '^'
+        };
+
+        static constexpr auto parse(format_parse_context& ctx, char& fill, align_type& align) noexcept
+        {
+            if (ctx.begin != ctx.end && *ctx.begin != '}')
             {
-            case '<':
-            case '>':
-            case '^':
-                align = static_cast<align_type>(*it);
-                ++it;
-                break;
-            default:
-                fill = *it;
-                ++it;
-                if (it == ctx.end())
+                if ((ctx.begin + 1) < ctx.end)
                 {
-                    --it;
-                }
-                else
-                {
-                    switch (*it)
+                    const auto a {*(ctx.begin + 1)};
+                    if (a == '<' || a == '>' || a == '^')
                     {
-                    case '<':
-                    case '>':
-                    case '^':
-                        align = static_cast<align_type>(*it);
-                        ++it;
-                        break;
-                    default:
-                        --it;
-                        fill = ' ';
-                        break;
-                    }
-                }
-                break;
-            }
-        }
-
-        return it;
-    }
-
-    export
-    constexpr auto parse_range_fill_align(format_context& ctx, char& fill, align_type& align)
-    {
-        const auto it {parse_fill_align(ctx, fill, align)};
-
-        switch (fill)
-        {
-        case '{':
-        case '}':
-        case ':':
-            throw std::format_error{"Invalid fill character"};
-        }
-
-        return it;
-    }
-
-    export
-    constexpr auto parse_width(format_context& ctx, std::size_t& width)
-    {
-        width = 0;
-
-        auto it {ctx.begin()};
-        const auto end {ctx.end()};
-
-        if (it != end)
-        {
-            switch (*it)
-            {
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-                width = parse_arg_id(it, end);
-                break;
-            case '{':
-                ++it;
-                if (it == end)
-                {
-                    throw std::format_error{"Unmatched '{' in format string"};
-                }
-                switch (*it)
-                {
-                case '}':
-                    width = ctx.next_arg_id();
-                    ++it;
-                    break;
-                case '0':
-                case '1':
-                case '2':
-                case '3':
-                case '4':
-                case '5':
-                case '6':
-                case '7':
-                case '8':
-                case '9':
-                    width = parse_arg_id(it, end);
-                    ctx.check_arg_id(width);
-                    break;
-                default:
-                    throw std::format_error{"Unmatched '{' in format string."};
-                }
-                width = ctx.arg(width).visit(lib2::overloaded {
-                    [](const std::intmax_t value) -> std::size_t {
-                        if (value < 0)
+                        if (*ctx.begin != '{' && *ctx.begin != '}')
                         {
-                            throw std::format_error{"Width cannot be negative."};
+                            fill = *ctx.begin;
                         }
-                        
-                        return value;
+                        align = static_cast<align_type>(a);
+                        return ctx.begin + 2;
                     }
-                ,   [](const std::uintmax_t value) -> std::size_t {
-                        return value;
+                }
+
+                const auto a {*ctx.begin};
+                if (a == '<' || a == '>' || a == '^')
+                {
+                    align = static_cast<align_type>(a);
+                    return ctx.begin + 1;
+                }
+            }
+
+            return ctx.begin;
+        }
+    };
+
+    export
+    struct width_parser : format_parser
+    {
+    public:
+        constexpr auto parse(format_parse_context& ctx)
+        {
+            *this = {};
+            
+            auto it {ctx.begin};
+
+            if (it != ctx.end)
+            {
+                if (*it == '{')
+                {
+                    ++it;
+                    if (it == ctx.end)
+                    {
+                        throw format_error{"Unmatched '{' in format string"};
                     }
-                ,   [](const auto&) -> std::size_t {
-                        throw std::format_error{"Width argument is not integral."};
+
+                    if (*it == '}')
+                    {
+                        width = ctx.next_arg_id();
+                        ctx.check_dynamic_spec_integral(width);
+                        dynamic = true;
+                        ++it;
+                    }
+                    else if (isdigit_ascii(*it))
+                    {
+                        width = parse_unsigned(it, ctx.end);
+                        ctx.check_arg_id(width);
+                        ctx.check_dynamic_spec_integral(width);
+                        dynamic = true;
+
+                        if (it == ctx.end || *it != '}')
+                        {
+                            throw format_error{"Unmatched '{' in format string."};
+                        }
+                        ++it;
+                    }
+                    else
+                    {
+                        throw format_error{"Unmatched '{' in format string."};
+                    }
+                }
+                else if (*it >= '1' && *it <= '9')
+                {
+                    width = parse_unsigned(it, ctx.end);
+                    dynamic = false;
+                }
+            }
+
+            return it;
+        }
+
+        constexpr void set_width(const std::size_t w) noexcept
+        {
+            width = w;
+            dynamic = false;
+        }
+
+        constexpr std::size_t get_width(format_context& ctx) const
+        {
+            if (dynamic)
+            {
+                return ctx.args.get(width).visit(overloaded {
+                    [](const auto&) -> std::size_t {
+                        throw format_error{"Format arg is not numeric"};
+                    },
+                    [](const std::intmax_t v) -> std::size_t {
+                        if (v < 0)
+                        {
+                            throw format_error{"Format arg is negative"};
+                        }
+                        return v;
+                    },
+                    [](const std::uintmax_t v) -> std::size_t {
+                        return v;
                     }
                 });
-                break;
             }
+
+            return width;
         }
-
-        return it;
-    }
-
-    export
-    constexpr auto parse_precision(format_context& ctx, optional_size& precision)
-    {
-        auto it {ctx.begin()};
-        const auto end {ctx.end()};
-
-        if (it != end)
-        {
-            if (*it == '.')
-            {
-                ++it;
-                if (it == end)
-                {
-                    throw std::format_error{"Invalid precision format"};
-                }
-                
-                switch (*it)
-                {
-                case '1':
-                case '2':
-                case '3':
-                case '4':
-                case '5':
-                case '6':
-                case '7':
-                case '8':
-                case '9':
-                    precision = parse_arg_id(it, end);
-                    break;
-                case '{':
-                    ++it;
-                    if (it == end)
-                    {
-                        throw std::format_error{"Unmatched '{' in format string"};
-                    }
-
-                    switch (*it)
-                    {
-                    case '}':
-                        precision = ctx.next_arg_id();
-                        ++it;
-                        break;
-                    case '0':
-                    case '1':
-                    case '2':
-                    case '3':
-                    case '4':
-                    case '5':
-                    case '6':
-                    case '7':
-                    case '8':
-                    case '9':
-                        precision = parse_arg_id(it, end);
-                        ctx.check_arg_id(*precision);
-                        break;
-                    default:
-                        throw std::format_error{"Unmatched '{' in format string."};
-                    }
-                    precision = ctx.arg(*precision).visit(lib2::overloaded {
-                        [](const std::intmax_t value) -> std::size_t {
-                            if (value < 0)
-                            {
-                                throw std::format_error{"Precision cannot be negative."};
-                            }
-                            return value;
-                        }
-                    ,   [](const std::uintmax_t value) -> std::size_t {
-                            return value;
-                        }
-                    ,   [](const auto&) -> std::size_t {
-                            throw std::format_error{"Precision argument is not integral."};
-                        }
-                    });
-                    break;
-                }
-            }
-        }
-
-        return it;
-    }
-
-    export
-    enum class sign_type : char
-    {
-        plus  = '+',
-        minus = '-',
-        space = ' '
+    private:
+        std::size_t width {0};
+        bool dynamic {false};
     };
 
     export
-    constexpr auto parse_sign(format_context& ctx, sign_type& sign) noexcept
+    struct precision_parser : format_parser
     {
-        auto it {ctx.begin()};
-        const auto end {ctx.end()};
-
-        if (it != end)
+    public:
+        constexpr auto parse(format_parse_context& ctx)
         {
-            switch (*it)
+            *this = {};
+
+            auto it {ctx.begin};
+
+            if (it != ctx.end)
             {
-            case '+':
-            case '-':
-            case ' ':
-                sign = static_cast<sign_type>(static_cast<char>(*it));
-                ++it;
-                break;
-            }
-        }
-
-        return it;
-    }
-
-    export
-    constexpr auto parse_alt(format_context& ctx, bool& alt, bool& zero) noexcept
-    {
-        auto it {ctx.begin()};
-        const auto end {ctx.end()};
-
-        if (it != end)
-        {
-            switch (*it)
-            {
-            case '#':
-                alt = true;
-                ++it;
-                if (it == end || *it != '0')
+                if (*it == '.')
                 {
-                    break;
-                }
-            case '0':
-                zero = true;
-                ++it;
-            }
-        }
-
-        return it;
-    }
-
-    export
-    constexpr auto parse_locale(format_context& ctx, bool& use_locale) noexcept
-    {
-        auto it {ctx.begin()};
-
-        if (it != ctx.end())
-        {
-            if (*it == 'L')
-            {
-                use_locale = true;
-                ++it;
-            }
-        }
-
-        return it;
-    }
-
-    export
-    constexpr auto parse_string(format_context& ctx, std::string_view& str)
-    {
-        auto it {ctx.begin()};
-        const auto end {ctx.end()};
-
-        if (it != end)
-        {
-            switch (*it)
-            {
-            case '{':
-                {
-                    std::size_t arg;
                     ++it;
-                    if (it == end)
+                    if (it == ctx.end)
                     {
-                        throw std::format_error{"Unmatched '{' in format string"};
+                        throw format_error{"Invalid precision format"};
                     }
-                    switch (*it)
+
+                    if (*it == '{')
                     {
-                    case '}':
-                        arg = ctx.next_arg_id();
                         ++it;
-                        break;
-                    case '0':
-                    case '1':
-                    case '2':
-                    case '3':
-                    case '4':
-                    case '5':
-                    case '6':
-                    case '7':
-                    case '8':
-                    case '9':
-                        arg = parse_arg_id(it, end);
-                        ctx.check_arg_id(arg);
-                        break;
-                    default:
-                        throw std::format_error{"Unmatched '{' in format string."};
+                        if (it == ctx.end)
+                        {
+                            throw format_error{"Unmatched '{' in format string"};
+                        }
+
+                        if (*it == '}')
+                        {
+                            precision = ctx.next_arg_id();
+                            ctx.check_dynamic_spec_integral(*precision);
+                            dynamic = true;
+                            ++it;
+                        }
+                        else if (isdigit_ascii(*it))
+                        {
+                            precision = parse_unsigned(it, ctx.end);
+                            ctx.check_arg_id(*precision);
+                            ctx.check_dynamic_spec_integral(*precision);
+                            dynamic = true;
+
+                            if (it == ctx.end || *it != '}')
+                            {
+                                throw format_error{"Unmatched '{' in format string."};
+                            }
+                            ++it;
+                        }
+                        else
+                        {
+                            throw format_error{"Unmatched '{' in format string."};
+                        }
                     }
-                    str = ctx.arg(arg).visit(lib2::overloaded {
-                        [](const std::string_view value) -> std::string_view {
-                            return value;
-                        }
-                    ,   [](const auto&) -> std::string_view {
-                            throw std::format_error{"Argument is not string."};
-                        }
-                    });
-                    break;
-                }
-            default:
-                {
-                    const auto end2 {std::find(it, end, '}')};
-                    str = {it, end2};
-                    it = end2;
+                    else if (isdigit_ascii(*it))
+                    {
+                        precision = parse_unsigned(it, ctx.end);
+                        dynamic = false;
+                    }
+                    else
+                    {
+                        throw format_error{"Expected a number or replacement field in precision"};
+                    }
                 }
             }
+
+            return it;
         }
 
-        return it;
-    }
+        constexpr void set_precision(const std::size_t p) noexcept
+        {
+            precision = p;
+            dynamic = false;
+        }
+
+        constexpr optional_size get_precision(format_context& ctx) const
+        {
+            if (dynamic)
+            {
+                return ctx.args.get(*precision).visit(overloaded {
+                    [](const auto&) -> std::size_t {
+                        throw format_error{"Format arg is not numeric"};
+                    },
+                    [](const std::intmax_t v) -> std::size_t {
+                        if (v < 0)
+                        {
+                            throw format_error{"Format arg is negative"};
+                        }
+                        return v;
+                    },
+                    [](const std::uintmax_t v) -> std::size_t {
+                        return v;
+                    }
+                });
+            }
+
+            return precision;
+        }
+    private:
+        optional_size precision {};
+        bool dynamic {false};
+    };
+
+    export
+    struct sign_parser : format_parser
+    {
+        enum class sign_type : char
+        {
+            plus  = '+',
+            minus = '-',
+            space = ' '
+        };
+
+        static constexpr auto parse(format_parse_context& ctx, sign_type& sign) noexcept
+        {
+            if (ctx.begin != ctx.end)
+            {
+                const auto ch {*ctx.begin};
+                if (ch == '+' || ch == '-' || ch == ' ')
+                {
+                    sign = static_cast<sign_type>(ch);
+                    ++ctx.begin;
+                }
+            }
+
+            return ctx.begin;
+        }
+    };
+
+    export
+    struct alt_parser : format_parser
+    {
+        static constexpr auto parse(format_parse_context& ctx, bool& alt, bool& zero) noexcept
+        {
+            alt = ctx.begin != ctx.end && *ctx.begin == '#';
+            ctx.begin += alt;
+
+            zero = ctx.begin != ctx.end && *ctx.begin == '0';
+            ctx.begin += zero;
+
+            return ctx.begin;
+        }
+    };
+
+    export
+    struct locale_parser : format_parser
+    {
+        static constexpr auto parse(format_parse_context& ctx, bool& use_locale) noexcept
+        {
+            use_locale = ctx.begin != ctx.end && *ctx.begin == 'L';
+            ctx.begin += use_locale;
+            
+            return ctx.begin;
+        }
+    };
 }

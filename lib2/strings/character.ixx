@@ -18,7 +18,6 @@ namespace lib2
     template<typename T>
     struct is_string_literal : std::false_type {};
 
-    export
     template<class T, std::size_t N>
     struct is_string_literal<const T[N]> : std::bool_constant<character<T>> {};
 
@@ -63,315 +62,115 @@ namespace lib2
     export
     constexpr cstring_sentinel_t cstring_sentinel {};
 
-    struct is_ascii_fn
+    [[nodiscard]] constexpr bool is_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            return c <= 127;
-        }
-    };
+        return c <= 127;
+    }
 
     export
-    constexpr is_ascii_fn is_ascii {};
-
-    struct is_ascii_alpha_fn
+    [[nodiscard]] constexpr bool isupper_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(CharT c) const noexcept
-        {
-            c &= 0xDF;
-            return c >= 'A' && c <= 'Z';
-        }
-    };
+        return c >= 'A' && c <= 'Z';
+    }
 
     export
-    constexpr is_ascii_alpha_fn is_ascii_alpha {};
-
-    struct is_ascii_upper_fn
+    [[nodiscard]] constexpr bool islower_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            return c >= 'A' && c <= 'Z';
-        }
-    };
+        return c >= 'a' && c <= 'z';
+    }
 
     export
-    constexpr is_ascii_upper_fn is_ascii_upper {};
-
-    struct is_ascii_lower_fn
+    [[nodiscard]] constexpr bool isalpha_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            return c >= 'a' && c <= 'z';
-        }
-    };
+        return isupper_ascii(c & 0xDF);
+    }
 
     export
-    constexpr is_ascii_lower_fn is_ascii_lower {};
-
-    struct is_ascii_digit_fn
+    constexpr bool isdigit_ascii(const char c) noexcept
     {
-        template<character CharT>
-        constexpr bool operator()(const CharT c) const noexcept
-        {
-            return c >= '0' && c <= '9';
-        }
-
-        template<character CharT>
-        constexpr bool operator()(const CharT c, const int base) const
-        {
-            if (base < 2 || base > 36)
-            {
-                throw std::out_of_range{"base must be in range 2..36"};
-            }
-            
-            switch (c)
-            {
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-                return static_cast<int>(c - '0') < base;
-            case 'A':
-            case 'B':
-            case 'C':
-            case 'D':
-            case 'E':
-            case 'F':
-            case 'G':
-            case 'H':
-            case 'I':
-            case 'J':
-            case 'K':
-            case 'L':
-            case 'M':
-            case 'N':
-            case 'O':
-            case 'P':
-            case 'Q':
-            case 'R':
-            case 'S':
-            case 'T':
-            case 'U':
-            case 'V':
-            case 'W':
-            case 'X':
-            case 'Y':
-            case 'Z':
-                return static_cast<int>(10 + static_cast<int>(c - 'A')) < base;
-            case 'a':
-            case 'b':
-            case 'c':
-            case 'd':
-            case 'e':
-            case 'f':
-            case 'g':
-            case 'h':
-            case 'i':
-            case 'j':
-            case 'k':
-            case 'l':
-            case 'm':
-            case 'n':
-            case 'o':
-            case 'p':
-            case 'q':
-            case 'r':
-            case 's':
-            case 't':
-            case 'u':
-            case 'v':
-            case 'w':
-            case 'x':
-            case 'y':
-            case 'z':
-                return static_cast<int>(10 + static_cast<int>(c - 'a')) < base;
-            default:
-                return false;
-            }
-        }
-    };
+        return c >= '0' && c <= '9';
+    }
 
     export
-    constexpr is_ascii_digit_fn is_ascii_digit {};
-
-    struct is_ascii_bit_fn
+    [[nodiscard]] constexpr bool isbdigit_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            return c == '0' || c == '1';
-        }
-    };
+        return c == '0' || c == '1';
+    }
 
     export
-    constexpr is_ascii_bit_fn is_ascii_bit {};
-
-    struct is_ascii_xdigit_fn
+    [[nodiscard]] constexpr bool isxdigit_ascii(char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(CharT c) const noexcept
-        {
-            if (is_ascii_digit(c))
-            {
-                return true;
-            }
-            
-            c &= 0xDF;
-            return c >= 'A' && c <= 'F';
-        }
-    };
+        if (isdigit_ascii(c)) return true;
+        c &= 0xDF;
+        return c >= 'A' && c <= 'F';
+    }
 
     export
-    constexpr is_ascii_xdigit_fn is_ascii_xdigit {};
-
-    struct is_ascii_odigit_fn
+    [[nodiscard]] constexpr bool isodigit_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            return c >= '0' && c <= '7';
-        }
-    };
+        return c >= '0' && c <= '7';
+    }
 
     export
-    constexpr is_ascii_odigit_fn is_ascii_odigit {};
-
-    struct is_ascii_alnum_fn
+    [[nodiscard]] constexpr bool isalnum_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            return is_ascii_alpha(c) || is_ascii_digit(c);
-        }
-    };
+        return isalpha_ascii(c) || isdigit_ascii(c);
+    }
 
     export
-    constexpr is_ascii_alnum_fn is_ascii_alnum {};
-
-    struct is_ascii_space_fn
+    [[nodiscard]] constexpr bool isspace_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            switch (c)
-            {
-            case ' ':
-            case '\t':
-            case '\n':
-            case '\v':
-            case '\f':
-            case '\r':
-                return true;
-            default:
-                return false;
-            }
-        }
-    };
+        return (c == ' ') || (c >= '\t' && c <= '\r');
+    }
 
     export
-    constexpr is_ascii_space_fn is_ascii_space {};
-
-    struct is_ascii_blank_fn
+    [[nodiscard]] constexpr bool isblank_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            return c == ' ' || c == '\t';
-        }
-    };
+        return c == ' ' || c == '\t';
+    }
 
     export
-    constexpr is_ascii_blank_fn is_ascii_blank {};
-
-    struct is_ascii_cntrl_fn
+    [[nodiscard]] constexpr bool iscntrl_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            return c < 32 || c == 127;
-        }
-    };
+        return c < 32 || c == 127;
+    }
 
     export
-    constexpr is_ascii_cntrl_fn is_ascii_cntrl {};
-
-    struct is_ascii_graph_fn
+    [[nodiscard]] constexpr bool isgraph_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            return c > 32 && c < 127;
-        }
-    };
+        return c > 32 && c < 127;
+    }
 
     export
-    constexpr is_ascii_graph_fn is_ascii_graph {};
-
-    struct is_ascii_print_fn
+    [[nodiscard]] constexpr bool isprint_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            return c >= 32 && c < 127;
-        }
-    };
+        return c >= 32 && c < 127;
+    }
 
     export
-    constexpr is_ascii_print_fn is_ascii_print {};
-
-    struct is_ascii_punct_fn
+    [[nodiscard]] constexpr bool ispunct_ascii(const char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT c) const noexcept
-        {
-            return is_ascii_graph(c) && !is_ascii_alnum(c);
-        }
-    };
+        return isgraph_ascii(c) && !isalnum_ascii(c);
+    }
 
     export
-    constexpr is_ascii_punct_fn is_ascii_punct {};
-
-    struct ascii_to_lower_fn
+    [[nodiscard]] constexpr char tolower_ascii(char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr CharT operator()(const CharT c) const noexcept
-        {
-            return (c >= 'A' && c <= 'Z') ? (c | 0x20) : c;
-        }
-    };
+        return c += isupper_ascii(c) * 0x20;
+    }
 
     export
-    constexpr ascii_to_lower_fn ascii_to_lower {};
-
-    struct ascii_to_upper_fn
+    [[nodiscard]] constexpr char toupper_ascii(char c) noexcept
     {
-        template<character CharT>
-        [[nodiscard]] constexpr CharT operator()(const CharT c) const noexcept
-        {
-            return (c >= 'a' && c <= 'z') ? (c & ~0x20) : c;
-        }
-    };
+        return c -= islower_ascii(c) * 0x20;
+    }
 
-    export
-    constexpr ascii_to_upper_fn ascii_to_upper {};
-
-    struct ascii_icompare_fn
+    struct icompare_ascii_fn
     {
-        template<character CharT>
-        [[nodiscard]] constexpr std::strong_ordering operator()(const CharT a, const CharT b) const noexcept
+        [[nodiscard]] constexpr std::strong_ordering operator()(const char a, const char b) const noexcept
         {
-            const auto lower_a {ascii_to_lower(a)};
-            const auto lower_b {ascii_to_lower(b)};
+            const auto lower_a {tolower_ascii(a)};
+            const auto lower_b {toupper_ascii(b)};
             if (lower_a < lower_b)
             {
                 return std::strong_ordering::less;
@@ -384,8 +183,7 @@ namespace lib2
             return std::strong_ordering::equal;
         }
 
-        template<character CharT>
-        [[nodiscard]] constexpr std::strong_ordering operator()(const std::basic_string_view<CharT> a, const std::basic_string_view<CharT> b) const noexcept
+        [[nodiscard]] constexpr std::strong_ordering operator()(const std::string_view a, const std::string_view b) const noexcept
         {
             const auto min_size {std::min(a.size(), b.size())};
             for (std::size_t i {0}; i < min_size; ++i)
@@ -411,43 +209,27 @@ namespace lib2
     };
 
     export
-    constexpr ascii_icompare_fn ascii_icompare {};
+    constexpr icompare_ascii_fn icompare_ascii {};
 
-    struct ascii_iequal_fn
+    struct iequal_ascii_fn
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const CharT a, const CharT b) const noexcept
+        [[nodiscard]] constexpr bool operator()(const char a, const char b) const noexcept
         {
-            return ascii_to_lower(a) == ascii_to_lower(b);
+            return tolower_ascii(a) == tolower_ascii(b);
         }
 
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const std::basic_string_view<CharT> a, const std::basic_string_view<CharT> b) const noexcept
+        [[nodiscard]] constexpr bool operator()(const std::string_view a, const std::string_view b) const noexcept
         {
-            if (a.size() != b.size())
-            {
-                return false;
-            }
-
-            for (std::size_t i {0}; i < a.size(); ++i)
-            {
-                if (!(*this)(a[i], b[i]))
-                {
-                    return false;
-                }
-            }
-
-            return true;
+            return std::ranges::equal(a, b, {}, tolower_ascii, tolower_ascii);
         }
     };
 
     export
-    constexpr ascii_iequal_fn ascii_iequal {};
+    constexpr iequal_ascii_fn iequal_ascii {};
 
-    struct ascii_icontains_fn
+    struct icontains_ascii_fn
     {
-        template<character CharT>
-        [[nodiscard]] constexpr bool operator()(const std::basic_string_view<CharT> haystack, const std::basic_string_view<CharT> needle) const noexcept
+        [[nodiscard]] constexpr bool operator()(const std::string_view haystack, const std::string_view needle) const noexcept
         {
             if (needle.empty())
             {
@@ -464,7 +246,7 @@ namespace lib2
                 bool found {true};
                 for (std::size_t j {0}; j < needle.size(); ++j)
                 {
-                    if (!ascii_iequal(haystack[i + j], needle[j]))
+                    if (!iequal_ascii(haystack[i + j], needle[j]))
                     {
                         found = false;
                         break;
@@ -482,5 +264,5 @@ namespace lib2
     };
 
     export
-    constexpr ascii_icontains_fn ascii_icontains {};
+    constexpr icontains_ascii_fn icontains_ascii {};
 }

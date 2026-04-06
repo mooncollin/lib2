@@ -4,242 +4,251 @@ import std;
 
 import lib2.concepts;
 
-import :utility;
+import :formatter;
 import :context;
 import :parsers;
 import :format;
+import :string;
+import :arithmetic;
+import :misc;
 
 namespace lib2
 {
-    // MSVC Bug: Not all can be static.
     template<class R>
     struct chrono_suffix {};
 
-    static inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::atto>)
-    {
-        return os << "as";
-    }
-
-    static inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::femto>)
-    {
-        return os << "fs";
-    }
-
-    static inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::pico>)
-    {
-        return os << "ps";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::nano>)
-    {
-        return os << "ns";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::micro>)
-    {
-        return os << "us";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::milli>)
-    {
-        return os << "ms";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::centi>)
-    {
-        return os << "cs";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::deci>)
-    {
-        return os << "ds";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::ratio<1>>)
-    {
-        os.put('s');
-        return os;
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::deca>)
-    {
-        return os << "das";
-    }
-
-    static inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::hecto>)
-    {
-        return os << "hs";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::kilo>)
-    {
-        return os << "ks";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::mega>)
-    {
-        return os << "Ms";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::giga>)
-    {
-        return os << "Gs";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::tera>)
-    {
-        return os << "Ts";
-    }
-    
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::peta>)
-    {
-        return os << "Ps";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::exa>)
-    {
-        return os << "Es";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::ratio<60>>)
-    {
-        return os << "min";
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::ratio<3600>>)
-    {
-        os.put('h');
-        return os;
-    }
-
-    inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::ratio<86400>>)
-    {
-        os.put('d');
-        return os;
-    }
-
-    template<std::intmax_t Num>
-    static inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::ratio<Num, 1>>)
-    {
-        return os << '[' << Num << "]s";
-    }
-
     template<std::intmax_t Num, std::intmax_t Den>
-    static inline text_ostream& operator<<(text_ostream& os, const chrono_suffix<std::ratio<Num, Den>>)
+    struct formatter<chrono_suffix<std::ratio<Num, Den>>> : public format_parser
     {
-        return os << '[' << Num << '/' << Den << "]s";
-    }
-
-    template<class Fmt>
-    class chrono_spec
-    {
-    public:
-        constexpr chrono_spec() noexcept = default;
-
-        constexpr chrono_spec(const std::string_view fmt)
-            : fmt_{fmt}
+        static void format(const chrono_suffix<std::ratio<Num, Den>>, format_context& ctx)
         {
-            validate(fmt);
-        }
-
-        constexpr chrono_spec(const chrono_spec&) noexcept = default;
-        constexpr chrono_spec& operator=(const chrono_spec&) noexcept = default;
-
-        constexpr std::string_view fmt() const noexcept
-        {
-            return fmt_;
-        }
-    private:
-        std::string_view fmt_;
-
-        static constexpr void validate(const std::string_view fmt)
-        {
-            bool in_format {false};
-            char mod {};
-
-            for (const auto ch : fmt)
-            {
-                if (in_format)
-                {
-                    switch (ch)
-                    {
-                    case 'O':
-                    case 'E':
-                        if (mod)
-                        {
-                            // throw std::format_error{lib2::format("Invalid chrono spec: %{}{}", mod, ch)};
-                        }
-                        mod = ch;
-                        continue;
-                    case '%':
-                    case 'n':
-                    case 't':
-                        if (mod)
-                        {
-                            // throw std::format_error{lib2::format("Invalid chrono spec: %{}{}", mod, ch)};
-                        }
-                        break;
-                    default:
-                        if (!Fmt::validate_spec(ch, mod))
-                        {
-                            // if (mod)
-                            // {
-                            //     throw std::format_error{lib2::format("Invalid chrono spec: %{}{}", mod, ch)};
-                            // }
-                            // throw std::format_error{lib2::format("Invalid chrono spec: %{}", ch)};
-                        }
-                    }
-                    in_format = false;
-                }
-                else
-                {
-                    in_format = ch == '%';
-                }
-            }
-
-            if (in_format)
-            {
-                throw std::format_error{"Invalid chrono spec: %"};
-            }
+            lib2::format_to<"[{}/{}]s">(ctx.stream, Num, Den);
         }
     };
 
-    template<class CRTP>
-    struct chrono_fmt
+    template<std::intmax_t Num>
+    struct formatter<chrono_suffix<std::ratio<Num, 1>>> : public format_parser
     {
-        std::locale get_locale(this const auto& self) noexcept
+        static void format(const chrono_suffix<std::ratio<Num, 1>>, format_context& ctx)
         {
-            if (self.use_locale)
-            {
-                if (self.locale)
-                {
-                    return *self.locale;
-                }
-                return {};
-            }
+            lib2::format_to<"[{}]s">(ctx.stream, Num);
+        }
+    };
 
-            return std::locale::classic();
+    template<>
+    struct formatter<chrono_suffix<std::atto>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::atto>, format_context& ctx)
+        {
+            ctx.stream.write("as");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::femto>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::femto>, format_context& ctx)
+        {
+            ctx.stream.write("fs");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::pico>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::pico>, format_context& ctx)
+        {
+            ctx.stream.write("ps");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::nano>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::nano>, format_context& ctx)
+        {
+            ctx.stream.write("ns");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::micro>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::micro>, format_context& ctx)
+        {
+            ctx.stream.write("us");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::milli>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::milli>, format_context& ctx)
+        {
+            ctx.stream.write("ms");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::centi>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::centi>, format_context& ctx)
+        {
+            ctx.stream.write("cs");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::deci>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::deci>, format_context& ctx)
+        {
+            ctx.stream.write("ds");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::ratio<1>>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::ratio<1>>, format_context& ctx)
+        {
+            ctx.stream.put('s');
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::deca>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::deca>, format_context& ctx)
+        {
+            ctx.stream.write("das");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::hecto>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::hecto>, format_context& ctx)
+        {
+            ctx.stream.write("hs");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::kilo>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::kilo>, format_context& ctx)
+        {
+            ctx.stream.write("ks");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::mega>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::mega>, format_context& ctx)
+        {
+            ctx.stream.write("Ms");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::giga>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::giga>, format_context& ctx)
+        {
+            ctx.stream.write("Gs");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::tera>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::tera>, format_context& ctx)
+        {
+            ctx.stream.write("Ts");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::peta>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::peta>, format_context& ctx)
+        {
+            ctx.stream.write("Ps");
+        }
+    };
+    
+    template<>
+    struct formatter<chrono_suffix<std::exa>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::exa>, format_context& ctx)
+        {
+            ctx.stream.write("Es");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::ratio<60>>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::ratio<60>>, format_context& ctx)
+        {
+            ctx.stream.write("min");
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::ratio<3600>>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::ratio<3600>>, format_context& ctx)
+        {
+            ctx.stream.put('h');
+        }
+    };
+
+    template<>
+    struct formatter<chrono_suffix<std::ratio<86400>>> : public format_parser
+    {
+        static void format(const chrono_suffix<std::ratio<86400>>, format_context& ctx)
+        {
+            ctx.stream.put('d');
+        }
+    };
+
+    struct chrono_formatter : public width_parser
+    {
+    public:
+        char fill {' '};
+        fill_align_parser::align_type align {fill_align_parser::align_type::left};
+        bool use_locale {false};
+
+        template<class Self>
+        constexpr auto parse(this Self& self, format_parse_context& ctx)
+        {
+            self = {};
+
+            ctx.begin = fill_align_parser::parse(ctx, self.fill, self.align);
+            ctx.begin = self.width_parser::parse(ctx);
+            if constexpr (std::derived_from<Self, precision_parser>)
+            {
+                ctx.begin = self.precision_parser::parse(ctx);
+            }
+            ctx.begin = locale_parser::parse(ctx, self.use_locale);
+
+            const auto end {std::find(ctx.begin, ctx.end, '}')};
+            self.fmt(std::string_view{ctx.begin, end});
+            return end;
         }
 
-        static constexpr CRTP parse(format_context& ctx)
+        [[nodiscard]] constexpr std::string_view fmt() const noexcept
         {
-            CRTP fmt;
-            auto it {parse_fill_align(ctx, fmt.fill, fmt.align)};
-            ctx.advance_to(it);
-            it = parse_width(ctx, fmt.width);
-            ctx.advance_to(it);
-            if constexpr (requires(const CRTP& fmt) { fmt.precision; })
-            {
-                it = parse_precision(ctx, fmt.precision);
-                ctx.advance_to(it);
-            }
-            it = parse_locale(ctx, fmt.use_locale);
-            fmt.locale = ctx.locale();
+            return fmt_;
+        }
 
-            const auto end {std::find(it, ctx.end(), '}')};
-            fmt.spec = std::string_view{it, end};
-            ctx.advance_to(end);
-            return fmt;
+        constexpr void fmt(this auto& self, const std::string_view fmt)
+        {
+            self.validate(fmt);
+            self.fmt_ = fmt;
         }
 
         static constexpr bool validate_spec(const char spec, const char mod) noexcept
@@ -254,141 +263,191 @@ namespace lib2
                 return false;
             }
         }
-    };
-
-    struct tm_fmt
-    {
-        char fill {' '};
-        std::string_view spec;
-        const std::locale& locale;
-    };
-
-    template<class R>
-    struct denom_10th;
-
-    template<std::intmax_t N>
-    struct denom_10th<std::ratio<N, 1>> : std::integral_constant<std::intmax_t, 1> {};
-
-    template<std::intmax_t N, std::intmax_t D>
-    struct denom_10th<std::ratio<N, D>> : std::integral_constant<std::intmax_t, 1 + denom_10th<std::ratio<N, D / 10>>::value> {};
-
-    template<class Rep = int, class Period = std::ratio<1>>
-    text_ostream& to_stream(text_ostream& os, const std::tm& value, const tm_fmt& fmt, const std::chrono::duration<Rep, Period> d = {})
-    {
-        std::ios ios{nullptr};
-        ios.imbue(fmt.locale);
-        const auto& time_facet {std::use_facet<std::time_put<char, ostream_iterator<char>>>(fmt.locale)};
-
-        bool in_format {false};
-        char mod {};
-
-        for (const auto ch : fmt.spec)
+    protected:
+        std::locale get_locale(const format_context& ctx) const noexcept
         {
-            if (in_format)
+            if (use_locale)
             {
-                if (mod)
+                return ctx.locale();
+            }
+
+            return std::locale::classic();
+        }
+
+        template<class R>
+        struct denom_10th;
+
+        template<std::intmax_t N>
+        struct denom_10th<std::ratio<N, 1>> : std::integral_constant<std::intmax_t, 1> {};
+
+        template<std::intmax_t N, std::intmax_t D>
+        struct denom_10th<std::ratio<N, D>> : std::integral_constant<std::intmax_t, 1 + denom_10th<std::ratio<N, D / 10>>::value> {};
+
+        template<class Rep = int, class Period = std::ratio<1>>
+        void format_tm(const std::tm& value, format_context& ctx, const std::chrono::duration<Rep, Period> d = {}) const
+        {
+            std::ios ios{nullptr};
+            ios.imbue(get_locale(ctx));
+            const auto& time_facet {std::use_facet<std::time_put<char, ostream_iterator<char>>>(ios.getloc())};
+
+            bool in_format {false};
+            char mod {};
+
+            const auto f {fmt()};
+            const auto end {f.end()};
+            auto begin {f.begin()};
+            
+            while (begin != end)
+            {
+                const auto iter {std::find(begin, end, '%')};
+                if (begin != iter)
                 {
-                    time_facet.put(ostream_iterator{os}, ios, fmt.fill, &value, ch, mod);
+                    ctx.stream.write(std::string_view{begin, iter});
                 }
-                else
+
+                if (iter == end)
+                {
+                    break;
+                }
+
+                begin = iter;
+
+                ++begin;
+                const auto spec {*begin};
+                ++begin;
+
+                if (begin != end)
+                {
+                    if (spec == 'O' || spec == 'E')
+                    {
+                        time_facet.put(ostream_iterator{ctx.stream}, ios, fill, &value, *begin, spec);
+                        continue;
+                    }
+                }
+
+                switch (spec)
+                {
+                case '%':
+                    ctx.stream.put('%');
+                    break;
+                case 'n':
+                    ctx.stream.put('\n');
+                    break;
+                case 't':
+                    ctx.stream.put('\t');
+                    break;
+                case 'Q':
+                    formatter<Rep>::default_format(d.count(), ctx);
+                    break;
+                case 'q':
+                    formatter<chrono_suffix<Period>>::format({}, ctx);
+                    break;
+                case 'd':
+                    lib2::format_to<"{:02}">(ctx.stream, value.tm_mday);
+                    break;
+                case 'e':
+                    lib2::format_to<"{: >2}">(ctx.stream, value.tm_mday);
+                    break;
+                case 'm':
+                    lib2::format_to<"{:02}">(ctx.stream, value.tm_mon + 1);
+                    break;
+                case 'C':
+                    lib2::format_to<"{:02}">(ctx.stream, value.tm_year + 1900);
+                    break;
+                case 'Y':
+                    lib2::format_to<"{:04}">(ctx.stream, value.tm_year + 1900);
+                    break;
+                case 'y':
+                    lib2::format_to<"{:02}">(ctx.stream, (value.tm_year + 1900) % 100);
+                    break;
+                case 'u':
+                    formatter<int>::default_format(value.tm_wday + 1, ctx);
+                    break;
+                case 'w':
+                    formatter<int>::default_format(value.tm_wday, ctx);
+                    break;
+                case 'H':
+                    lib2::format_to<"{:02}">(ctx.stream, value.tm_hour);
+                    break;
+                case 'M':
+                    lib2::format_to<"{:02}">(ctx.stream, value.tm_min);
+                    break;
+                case 'S':
+                    if constexpr (std::chrono::treat_as_floating_point_v<Rep>)
+                    {
+                        const std::chrono::hh_mm_ss hhmmss {d};
+                        lib2::format_to<"{:.{}}">(ctx.stream, (d - hhmmss.hours() - hhmmss.minutes()).count(), std::size_t(std::min(std::intmax_t{6}, denom_10th<Period>::value)));
+                    }
+                    else
+                    {
+                        lib2::format_to<"{:02}">(ctx.stream, value.tm_sec);
+                    }
+                    break;
+                default:
+                    time_facet.put(ostream_iterator{ctx.stream}, ios, fill, &value, spec);
+                    break;
+                }
+            }
+        }
+    private:
+        std::string_view fmt_;
+
+        constexpr void validate(this const auto& self, const std::string_view fmt)
+        {
+            bool in_format {false};
+            char mod {};
+
+            for (const auto ch : fmt)
+            {
+                if (in_format)
                 {
                     switch (ch)
                     {
                     case 'O':
                     case 'E':
+                        if (mod)
+                        {
+                            throw format_error{format<"Invalid chrono spec: %{}{}">(mod, ch)};
+                        }
                         mod = ch;
                         continue;
                     case '%':
-                        os.put('%');
-                        break;
                     case 'n':
-                        os.put('\n');
-                        break;
                     case 't':
-                        os.put('\t');
-                        break;
-                    case 'Q':
-                        os << d.count();
-                        break;
-                    case 'q':
-                        os << chrono_suffix<Period>{};
-                        break;
-                    case 'd':
-                        to_stream(os, value.tm_mday, {.fill='0', .width=2});
-                        break;
-                    case 'e':
-                        to_stream(os, value.tm_mday, {.fill=' ', .width=2});
-                        break;
-                    case 'm':
-                        to_stream(os, value.tm_mon + 1, {.fill='0', .width=2});
-                        break;
-                    case 'C':
-                        to_stream(os, (value.tm_year + 1900) / 100, {.fill='0', .width=2});
-                        break;
-                    case 'Y':
-                        to_stream(os, value.tm_year + 1900, {.fill='0', .width=4});
-                        break;
-                    case 'y':
-                        to_stream(os, (value.tm_year + 1900) % 100, {.fill='0', .width=2});
-                        break;
-                    case 'u':
-                        os << (value.tm_wday + 1);
-                        break;
-                    case 'w':
-                        os << value.tm_wday;
-                        break;
-                    case 'H':
-                        to_stream(os, value.tm_hour, {.fill='0', .width=2});
-                        break;
-                    case 'M':
-                        to_stream(os, value.tm_min, {.fill='0', .width=2});
-                        break;
-                    case 'S':
-                        if constexpr (std::chrono::treat_as_floating_point_v<Rep>)
+                        if (mod)
                         {
-                            const std::chrono::hh_mm_ss hhmmss {d};
-                            to_stream(os, (d - hhmmss.hours() - hhmmss.minutes()).count(), {.precision=std::size_t(std::min(std::intmax_t{6}, denom_10th<Period>::value))});
-                        }
-                        else
-                        {
-                            to_stream(os, value.tm_sec, {.fill='0', .width=2});
+                            throw format_error{format<"Invalid chrono spec: %{}{}">(mod, ch)};
                         }
                         break;
                     default:
-                        time_facet.put(ostream_iterator{os}, ios, fmt.fill, &value, ch, mod);
-                        break;
+                        if (!self.validate_spec(ch, mod))
+                        {
+                            if (mod)
+                            {
+                                throw format_error{format<"Invalid chrono spec: %{}{}">(mod, ch)};
+                            }
+                            throw format_error{format<"Invalid chrono spec: %{}">(ch)};
+                        }
                     }
+                    in_format = false;
                 }
-
-                in_format = false;
-            }
-            else
-            {
-                switch (ch)
+                else
                 {
-                case '%':
-                    in_format = true;
-                    break;
-                default:
-                    os.put(ch);
+                    in_format = ch == '%';
                 }
+            }
+
+            if (in_format)
+            {
+                throw format_error{"Invalid chrono spec: %"};
             }
         }
-
-        return os;
-    }
+    };
 
     export
-    struct day_fmt : public chrono_fmt<day_fmt>
+    template<>
+    struct formatter<std::chrono::day> : public chrono_formatter
     {
-        char fill {' '};
-        align_type align {align_type::left};
-        std::size_t width {0};
-        chrono_spec<day_fmt> spec {};
-
-        bool use_locale {false};
-        const std::locale* locale;
-
         static constexpr bool validate_spec(const char spec, const char mod) noexcept
         {
             switch (spec)
@@ -397,63 +456,92 @@ namespace lib2
             case 'e':
                 return mod == 0 || mod == 'O';
             default:
-                return chrono_fmt<day_fmt>::validate_spec(spec, mod);
+                return chrono_formatter::validate_spec(spec, mod);
+            }
+        }
+
+        void format(const std::chrono::day d, format_context& ctx) const
+        {
+            const auto width {this->get_width(ctx)};
+
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
+
+            if (this->fmt().empty())
+            {
+                default_format(d, temp_context);
+            }
+            else
+            {
+                const std::tm time {.tm_mday=int(unsigned{d})};
+                this->format_tm(time, temp_context);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
+        }
+
+        static void default_format(const std::chrono::day d, format_context& ctx)
+        {
+            lib2::format_to<"{:02}">(ctx.stream, unsigned{d});
+            if (!d.ok())
+            {
+                ctx.stream.write(" is not a valid day");
             }
         }
     };
 
     export
-    text_ostream& operator<<(text_ostream& os, const std::chrono::day d)
+    template<>
+    struct formatter<std::chrono::month> : public chrono_formatter
     {
-        to_stream(os, unsigned{d}, {.fill='0', .width=2});
-        if (!d.ok())
+        void format(const std::chrono::month m, format_context& ctx) const
         {
-            os << " is not a valid day";
-        }
-        return os;
-    }
+            const auto width {this->get_width(ctx)};
 
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::day d, const day_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
 
-        if (fmt.spec.fmt().empty())
-        {
-            ref_os << d;
-        }
-        else
-        {
-            const std::tm time {.tm_mday=int(unsigned{d})};
-            to_stream(ref_os, time, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .locale=fmt.get_locale()});
-        }
+            if (this->fmt().empty())
+            {
+                default_format(m, temp_context);
+            }
+            else
+            {
+                const std::tm time {.tm_mon=int(unsigned{m}-1)};
+                this->format_tm(time, temp_context);
+            }
 
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
         }
 
-        return os;
-    }
-
-    export
-    struct month_fmt : public chrono_fmt<month_fmt>
-    {
-        char fill {' '};
-        align_type align {align_type::left};
-        std::size_t width {0};
-        chrono_spec<month_fmt> spec {};
-
-        bool use_locale {false};
-        const std::locale* locale;
-
+        static void default_format(const std::chrono::month m, format_context& ctx)
+        {
+            if (m.ok())
+            {
+                lib2::format_to<"{:L%b}">(ctx.locale(), ctx.stream, m);
+            }
+            else
+            {
+                lib2::format_to<"{} is not a valid month">(ctx.stream, unsigned{m});
+            }
+        }
+        
         static constexpr bool validate_spec(const char spec, const char mod) noexcept
         {
             switch (spec)
@@ -465,72 +553,51 @@ namespace lib2
             case 'm':
                 return mod == 0 || mod == 'O';
             default:
-                return chrono_fmt<month_fmt>::validate_spec(spec, mod);
+                return chrono_formatter::validate_spec(spec, mod);
             }
         }
     };
 
-    static void empty_spec(text_ostream& os, const std::chrono::month m, const std::locale& loc = {});
-
     export
-    text_ostream& operator<<(text_ostream& os, const std::chrono::month m)
+    template<>
+    struct formatter<std::chrono::year> : public chrono_formatter
     {
-        if (m.ok())
+        void format(const std::chrono::year y, format_context& ctx) const
         {
-            empty_spec(os, m);
-        }
-        else
-        {
-            os << unsigned{m} << " is not a valid month";
-        }
-        return os;
-    }
+            const auto width {this->get_width(ctx)};
 
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::month m, const month_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
 
-        if (fmt.spec.fmt().empty())
-        {
-            empty_spec(os, m, fmt.get_locale());
-        }
-        else
-        {
-            const std::tm time {.tm_mon=int(unsigned{m}-1)};
-            to_stream(ref_os, time, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .locale=fmt.get_locale()});
-        }
+            if (this->fmt().empty())
+            {
+                default_format(y, temp_context);
+            }
+            else
+            {
+                const std::tm time {.tm_year=int{y} - 1900};
+                this->format_tm(time, temp_context);
+            }
 
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
         }
 
-        return os;
-    }
-
-    static void empty_spec(text_ostream& os, const std::chrono::month m, const std::locale& loc)
-    {
-        to_stream(os, m, {.spec="%b", .use_locale=true, .locale = &loc});
-    }
-
-    export
-    struct year_fmt : public chrono_fmt<year_fmt>
-    {
-        char fill {' '};
-        align_type align {align_type::left};
-        std::size_t width {0};
-        chrono_spec<year_fmt> spec {};
-
-        bool use_locale {false};
-        const std::locale* locale;
+        static void default_format(const std::chrono::year y, format_context& ctx)
+        {
+            lib2::format_to<"{:04}">(ctx.stream, int{y});
+            if (!y.ok())
+            {
+                ctx.stream.write(" is not a valid year");
+            }
+        }
 
         static constexpr bool validate_spec(const char spec, const char mod) noexcept
         {
@@ -542,62 +609,54 @@ namespace lib2
             case 'y':
                 return true;
             default:
-                return false;
+                return chrono_formatter::validate_spec(spec, mod);
             }
         }
     };
 
     export
-    text_ostream& operator<<(text_ostream& os, const std::chrono::year y)
+    template<>
+    struct formatter<std::chrono::weekday> : public chrono_formatter
     {
-        to_stream(os, int{y}, {.fill='0', .width=4});
-        if (!y.ok())
+        void format(const std::chrono::weekday wd, format_context& ctx) const
         {
-            os << " is not a valid year";
-        }
-        return os;
-    }
+            const auto width {this->get_width(ctx)};
 
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::year y, const year_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
 
-        if (fmt.spec.fmt().empty())
-        {
-            ref_os << y;
-        }
-        else
-        {
-            const std::tm time {.tm_year=int{y} - 1900};
-            to_stream(ref_os, time, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .locale=fmt.get_locale()});
-        }
+            if (this->fmt().empty())
+            {
+                default_format(wd, temp_context);
+            }
+            else
+            {
+                const std::tm time {.tm_wday=int(wd.c_encoding())};
+                this->format_tm(time, temp_context);
+            }
 
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
         }
 
-        return os;
-    }
-
-    export
-    struct weekday_fmt : public chrono_fmt<weekday_fmt>
-    {
-        char fill {' '};
-        align_type align {align_type::left};
-        std::size_t width {0};
-        chrono_spec<weekday_fmt> spec {};
-
-        bool use_locale {false};
-        const std::locale* locale;
+        static void default_format(const std::chrono::weekday wd, format_context& ctx)
+        {
+            if (wd.ok())
+            {
+                lib2::format_to<"{:L%a}">(ctx.locale(), ctx.stream, wd);
+            }
+            else
+            {
+                lib2::format_to<"{} is not a valid weekday">(ctx.stream, wd.c_encoding());
+            }
+        }
 
         static constexpr bool validate_spec(const char spec, const char mod) noexcept
         {
@@ -610,164 +669,128 @@ namespace lib2
             case 'w':
                 return mod == 0 || mod == 'O';
             default:
-                return chrono_fmt<weekday_fmt>::validate_spec(spec, mod);
+                return chrono_formatter::validate_spec(spec, mod);
             }
         }
     };
 
-    static inline void empty_spec(text_ostream& os, const std::chrono::weekday w, const std::locale& loc = {});
+    export
+    template<>
+    struct formatter<std::chrono::weekday_indexed> : public formatter<std::chrono::weekday>
+    {
+        void format(const std::chrono::weekday_indexed wdi, format_context& ctx) const
+        {
+            const auto width {this->get_width(ctx)};
+
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
+
+            if (this->fmt().empty())
+            {
+                default_format(wdi, temp_context);
+            }
+            else
+            {
+                formatter<std::chrono::weekday>::format(wdi.weekday(), temp_context);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
+        }
+
+        static void default_format(const std::chrono::weekday_indexed wdi, format_context& ctx)
+        {
+            if (wdi.index() < 1 || wdi.index() > 5)
+            {
+                lib2::format_to<"{:L}[{} is not a valid index]">(ctx.locale(), ctx.stream, wdi.weekday(), wdi.index());
+            }
+            else
+            {
+                lib2::format_to<"{:L}[{}]">(ctx.locale(), ctx.stream, wdi.weekday(), wdi.index());
+            }
+        }
+    };
 
     export
-    inline text_ostream& operator<<(text_ostream& os, const std::chrono::weekday w)
+    template<>
+    struct formatter<std::chrono::weekday_last> : public formatter<std::chrono::weekday>
     {
-        empty_spec(os, w);
-        return os;
-    }
+        void format(const std::chrono::weekday_last wdl, format_context& ctx) const
+        {
+            const auto width {this->get_width(ctx)};
+
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
+
+            if (this->fmt().empty())
+            {
+                default_format(wdl, temp_context);
+            }
+            else
+            {
+                formatter<std::chrono::weekday>::format(wdl.weekday(), temp_context);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
+        }
+
+        static void default_format(const std::chrono::weekday_last wdl, format_context& ctx)
+        {
+            lib2::format_to<"{:L}[last]">(ctx.locale(), ctx.stream, wdl.weekday());
+        }
+    };
 
     export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::weekday w, const weekday_fmt& fmt)
+    template<>
+    struct formatter<std::chrono::month_day> : public chrono_formatter
     {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
+        void format(const std::chrono::month_day md, format_context& ctx) const
         {
-            empty_spec(ref_os, w, fmt.get_locale());
-        }
-        else
-        {
-            const std::tm time {.tm_wday=int(w.c_encoding())};
-            to_stream(ref_os, time, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .locale=fmt.get_locale()});
-        }
+            const auto width {this->get_width(ctx)};
 
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
 
-            to_stream(os, temp_os, s_fmt);
-        }
+            if (this->fmt().empty())
+            {
+                default_format(md, temp_context);
+            }
+            else
+            {
+                const std::tm time {.tm_mday=int(unsigned{md.day()}), .tm_mon=int(unsigned{md.month()}-1)};
+                this->format_tm(time, temp_context);
+            }
 
-        return os;
-    }
-
-    static inline void empty_spec(text_ostream& os, const std::chrono::weekday w, const std::locale& loc)
-    {
-        if (w.ok())
-        {
-            to_stream(os, w, {.spec="%a", .use_locale=true, .locale=&loc});
-        }
-        else
-        {
-            os << w.c_encoding() << " is not a valid weekday";
-        }
-    }
-
-    static inline void empty_spec(text_ostream& os, const std::chrono::weekday_indexed wi, const std::locale& loc = {})
-    {
-        to_stream(os, wi.weekday(), {.use_locale=true, .locale=&loc});
-        os.put('[');
-        os << wi.index();
-        if (wi.index() < 1 || wi.index() > 5)
-        {
-            os << " is not a valid index";
-        }
-        os.put(']');
-    }
-
-    export
-    inline text_ostream& operator<<(text_ostream& os, const std::chrono::weekday_indexed wi)
-    {
-        empty_spec(os, wi);
-        return os;
-    }
-
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::weekday_indexed wi, const weekday_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
-        {
-            empty_spec(ref_os, wi, fmt.get_locale());
-        }
-        else
-        {
-            const auto loc {fmt.get_locale()};
-            to_stream(ref_os, wi.weekday(), {.fill=fmt.fill, .spec=fmt.spec, .locale=&loc});
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
         }
 
-        if (fmt.width)
+        static void default_format(const std::chrono::month_day md, format_context& ctx)
         {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
+            lib2::format_to<"{}/{}">(ctx.locale(), ctx.stream, md.month(), md.day());
         }
-
-        return os;
-    }
-
-    static inline void empty_spec(text_ostream& os, const std::chrono::weekday_last wl, const std::locale& loc = {})
-    {
-        to_stream(os, wl.weekday(), {.use_locale=true, .locale=&loc});
-        os << "[last]";
-    }
-
-    export
-    inline text_ostream& operator<<(text_ostream& os, const std::chrono::weekday_last wl)
-    {
-        empty_spec(os, wl);
-        return os;
-    }
-
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::weekday_last wl, const weekday_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
-        {
-            empty_spec(ref_os, wl, fmt.get_locale());
-        }
-        else
-        {
-            const auto loc {fmt.get_locale()};
-            to_stream(ref_os, wl.weekday(), {.fill=fmt.fill, .spec=fmt.spec.fmt(), .use_locale=true, .locale=&loc});
-        }
-
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
-        }
-
-        return os;
-    }
-
-    export
-    struct month_day_fmt : public chrono_fmt<month_day_fmt>
-    {
-        char fill {' '};
-        align_type align {align_type::left};
-        std::size_t width {0};
-        chrono_spec<month_day_fmt> spec {};
-
-        bool use_locale {false};
-        const std::locale* locale;
 
         static constexpr bool validate_spec(const char spec, const char mod) noexcept
         {
@@ -780,495 +803,394 @@ namespace lib2
             case 'm':
                 return mod == 0 || mod == 'O';
             default:
-                return day_fmt::validate_spec(spec, mod);
+                return formatter<std::chrono::day>::validate_spec(spec, mod);
             }
         }
     };
 
-    static inline void empty_spec(text_ostream& os, const std::chrono::month_day md, const std::locale& loc = {})
-    {
-        empty_spec(os, md.month(), loc);
-        os.put('/');
-        os << md.day();
-    }
-
     export
-    inline text_ostream& operator<<(text_ostream& os, const std::chrono::month_day md)
+    template<>
+    struct formatter<std::chrono::month_day_last> : public formatter<std::chrono::month>
     {
-        empty_spec(os, md);
-        return os;
-    }
-
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::month_day md, const month_day_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
+        void format(const std::chrono::month_day_last mdl, format_context& ctx) const
         {
-            empty_spec(ref_os, md, fmt.get_locale());
-        }
-        else
-        {
-            const std::tm time {.tm_mday=int(unsigned{md.day()}), .tm_mon=int(unsigned{md.month()}-1)};
-            to_stream(ref_os, time, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .locale=fmt.get_locale()});
-        }
+            const auto width {this->get_width(ctx)};
 
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
 
-            to_stream(os, temp_os, s_fmt);
+            if (this->fmt().empty())
+            {
+                default_format(mdl, temp_context);
+            }
+            else
+            {
+                formatter<std::chrono::month>::format(mdl.month(), temp_context);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
         }
 
-        return os;
-    }
-
-    static inline void empty_spec(text_ostream& os, const std::chrono::month_day_last mdl, const std::locale& loc = {})
-    {
-        empty_spec(os, mdl.month(), loc);
-        os << "/last";
-    }
-
-    export
-    inline text_ostream& operator<<(text_ostream& os, const std::chrono::month_day_last mdl)
-    {
-        empty_spec(os, mdl);
-        return os;
-    }
-
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::month_day_last mdl, const month_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
+        static void default_format(const std::chrono::month_day_last mdl, format_context& ctx)
         {
-            empty_spec(ref_os, mdl, fmt.get_locale());
-        }
-        else
-        {
-            const auto loc {fmt.get_locale()};
-            to_stream(ref_os, mdl.month(), {.fill=fmt.fill, .spec=fmt.spec.fmt(), .use_locale=true, .locale=&loc});
-        }
-
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
-        }
-
-        return os;
-    }
-
-    export
-    struct month_weekday_fmt : public chrono_fmt<month_weekday_fmt>
-    {
-        char fill {' '};
-        align_type align {align_type::left};
-        std::size_t width {0};
-        chrono_spec<month_weekday_fmt> spec {};
-
-        bool use_locale {false};
-        const std::locale* locale;
-
-        static constexpr bool validate_spec(const char spec, const char mod) noexcept
-        {
-            return month_fmt::validate_spec(spec, mod) ||
-                   weekday_fmt::validate_spec(spec, mod);
-        }
-    };
-
-    static inline void empty_spec(text_ostream& os, const std::chrono::month_weekday mw, const std::locale& loc = {})
-    {
-        empty_spec(os, mw.month(), loc);
-        empty_spec(os, mw.weekday_indexed(), loc);
-    }
-
-    export
-    text_ostream& operator<<(text_ostream& os, const std::chrono::month_weekday mw)
-    {
-        empty_spec(os, mw);
-        return os;
-    }
-
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::month_weekday mw, const month_weekday_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
-        {
-            empty_spec(ref_os, mw, fmt.get_locale());
-        }
-        else
-        {
-            const std::tm time {.tm_mon=int(unsigned{mw.month()}-1), .tm_wday=int(mw.weekday_indexed().weekday().c_encoding())};
-            to_stream(ref_os, time, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .locale=fmt.get_locale()});
-        }
-
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
-        }
-
-        return os;
-    }
-
-    static inline void empty_spec(text_ostream& os, const std::chrono::month_weekday_last mwl, const std::locale& loc = {})
-    {
-        empty_spec(os, mwl.month(), loc);
-        os.put('/');
-        empty_spec(os, mwl.weekday_last(), loc);
-    }
-
-    export
-    inline text_ostream& operator<<(text_ostream& os, const std::chrono::month_weekday_last mwl)
-    {
-        empty_spec(os, mwl);
-        return os;
-    }
-
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::month_weekday_last mwl, const month_weekday_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
-        {
-            empty_spec(ref_os, mwl, fmt.get_locale());
-        }
-        else
-        {
-            const std::tm time {.tm_mon=int(unsigned{mwl.month()}-1), .tm_wday=int(mwl.weekday_last().weekday().c_encoding())};
-            to_stream(ref_os, time, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .locale=fmt.get_locale()});
-        }
-
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
-        }
-
-        return os;
-    }
-
-    export
-    struct year_month_fmt : public chrono_fmt<year_month_fmt>
-    {
-        char fill {' '};
-        align_type align {align_type::left};
-        std::size_t width {0};
-        chrono_spec<year_month_fmt> spec {};
-
-        bool use_locale {false};
-        const std::locale* locale;
-
-        static constexpr bool validate_spec(const char spec, const char mod) noexcept
-        {
-            return month_fmt::validate_spec(spec, mod) ||
-                   year_fmt::validate_spec(spec, mod);
-        }
-    };
-
-    static inline void empty_spec(text_ostream& os, const std::chrono::year_month ym, const std::locale& loc = {})
-    {
-        os << ym.year();
-        os.put('/');
-        empty_spec(os, ym.month(), loc);
-    }
-
-    export
-    inline text_ostream& operator<<(text_ostream& os, const std::chrono::year_month ym)
-    {
-        empty_spec(os, ym);
-        return os;
-    }
-
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::year_month ym, const year_month_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
-        {
-            empty_spec(ref_os, ym, fmt.get_locale());
-        }
-        else
-        {
-            const std::tm time {.tm_mon=int(unsigned{ym.month()}-1), .tm_year=int{ym.year()}-1900};
-            to_stream(ref_os, time, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .locale=fmt.get_locale()});
-        }
-
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
-        }
-
-        return os;
-    }
-
-    export
-    struct year_month_day_fmt : public chrono_fmt<year_month_day_fmt>
-    {
-        char fill {' '};
-        align_type align {align_type::left};
-        std::size_t width {0};
-        chrono_spec<year_month_day_fmt> spec {};
-
-        bool use_locale {false};
-        const std::locale* locale;
-
-        static constexpr bool validate_spec(const char spec, const char mod) noexcept
-        {
-            return month_fmt::validate_spec(spec, mod) ||
-                   year_fmt::validate_spec(spec, mod) ||
-                   day_fmt::validate_spec(spec, mod);
+            lib2::format_to<"{}/last">(ctx.locale(), ctx.stream, mdl.month());
         }
     };
 
     export
-    text_ostream& operator<<(text_ostream& os, const std::chrono::year_month_day ymd)
+    template<>
+    struct formatter<std::chrono::month_weekday> : public chrono_formatter
     {
-        to_stream(os, int{ymd.year()} % 100, {.fill='0', .width=2});
-        to_stream(os, unsigned{ymd.month()}, {.fill='0', .width=2});
-        to_stream(os, unsigned{ymd.day()}, {.fill='0', .width=2});
-
-        if (!ymd.ok())
+        void format(const std::chrono::month_weekday mwd, format_context& ctx) const
         {
-            os << " is not a valid date";
+            const auto width {this->get_width(ctx)};
+
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
+
+            if (this->fmt().empty())
+            {
+                default_format(mwd, temp_context);
+            }
+            else
+            {
+                const std::tm time {.tm_mon=int(unsigned{mwd.month()}-1), .tm_wday=int(mwd.weekday_indexed().weekday().c_encoding())};
+                this->format_tm(time, temp_context);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
         }
 
-        return os;
-    }
-
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::year_month_day ymd, const year_month_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
+        static void default_format(const std::chrono::month_weekday mwd, format_context& ctx)
         {
-            os << ymd;
+            lib2::format_to<"{:L}{:L}">(ctx.locale(), ctx.stream, mwd.month(), mwd.weekday_indexed());
         }
-        else
-        {
-            const std::tm time {.tm_mday=int(unsigned{ymd.day()}), .tm_mon=int(unsigned{ymd.month()}-1), .tm_year=int{ymd.year()}-1900};
-            to_stream(ref_os, time, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .locale=fmt.get_locale()});
-        }
-
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
-        }
-
-        return os;
-    }
-
-    static inline void empty_spec(text_ostream& os, const std::chrono::year_month_day_last ymdl, const std::locale& loc = {})
-    {
-        os << ymdl.year();
-        os.put('/');
-        empty_spec(os, ymdl.month_day_last(), loc);
-    }
-
-    export
-    inline text_ostream& operator<<(text_ostream& os, const std::chrono::year_month_day_last ymdl)
-    {
-        empty_spec(os, ymdl);
-        return os;
-    }
-
-    export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::year_month_day_last ymdl, const year_month_fmt& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
-        {
-            empty_spec(os, ymdl, fmt.get_locale());
-        }
-        else
-        {
-            const auto loc {fmt.get_locale()};
-            to_stream(ref_os, ymdl.year()/ymdl.month()/ymdl.day(), {.fill=fmt.fill, .spec=fmt.spec.fmt(), .use_locale=true, .locale=&loc});
-        }
-
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
-        }
-
-        return os;
-    }
-
-    export
-    struct year_month_weekday_fmt : public chrono_fmt<year_month_weekday_fmt>
-    {
-        char fill {' '};
-        align_type align {align_type::left};
-        std::size_t width {0};
-        chrono_spec<year_month_weekday_fmt> spec {};
-
-        bool use_locale {false};
-        const std::locale* locale;
 
         static constexpr bool validate_spec(const char spec, const char mod) noexcept
         {
-            return month_fmt::validate_spec(spec, mod) ||
-                   year_fmt::validate_spec(spec, mod) ||
-                   weekday_fmt::validate_spec(spec, mod);
+            return formatter<std::chrono::month>::validate_spec(spec, mod) ||
+                   formatter<std::chrono::weekday>::validate_spec(spec, mod);
         }
     };
 
-    static inline void empty_spec(text_ostream& os, const std::chrono::year_month_weekday ymw, const std::locale& loc = {})
+    export
+    template<>
+    struct formatter<std::chrono::month_weekday_last> : public formatter<std::chrono::month_weekday>
     {
-        os << ymw.year();
-        os.put('/');
-        empty_spec(os, ymw.month(), loc);
-        os.put('/');
-        empty_spec(os, ymw.weekday_indexed(), loc);
-    }
+        void format(const std::chrono::month_weekday_last mwdl, format_context& ctx) const
+        {
+            const auto width {this->get_width(ctx)};
+
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
+
+            if (this->fmt().empty())
+            {
+                default_format(mwdl, temp_context);
+            }
+            else
+            {
+                const std::tm time {.tm_mon=int(unsigned{mwdl.month()}-1), .tm_wday=int(mwdl.weekday_last().weekday().c_encoding())};
+                this->format_tm(time, temp_context);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
+        }
+
+        static void default_format(const std::chrono::month_weekday_last mwdl, format_context& ctx)
+        {
+            lib2::format_to<"{:L}{:L}">(ctx.locale(), ctx.stream, mwdl.month(), mwdl.weekday_last());
+        }
+    };
 
     export
-    inline text_ostream& operator<<(text_ostream& os, const std::chrono::year_month_weekday ymw)
+    template<>
+    struct formatter<std::chrono::year_month> : public chrono_formatter
     {
-        empty_spec(os, ymw);
-        return os;
-    }
+        void format(const std::chrono::year_month ym, format_context& ctx) const
+        {
+            const auto width {this->get_width(ctx)};
+
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
+
+            if (this->fmt().empty())
+            {
+                default_format(ym, temp_context);
+            }
+            else
+            {
+                const std::tm time {.tm_mon=int(unsigned{ym.month()}-1), .tm_year=int{ym.year()}-1900};
+                this->format_tm(time, temp_context);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
+        }
+
+        static void default_format(const std::chrono::year_month ym, format_context& ctx)
+        {
+            lib2::format_to<"{}/{:L}">(ctx.locale(), ctx.stream, ym.year(), ym.month());
+        }
+
+        static constexpr bool validate_spec(const char spec, const char mod) noexcept
+        {
+            return formatter<std::chrono::month>::validate_spec(spec, mod) ||
+                   formatter<std::chrono::year>::validate_spec(spec, mod);
+        }
+    };
 
     export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::year_month_weekday ymw, const year_month_weekday_fmt& fmt)
+    template<>
+    struct formatter<std::chrono::year_month_day> : public chrono_formatter
     {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
+        void format(const std::chrono::year_month_day ymd, format_context& ctx) const
         {
-            empty_spec(os, ymw, fmt.get_locale());
+            const auto width {this->get_width(ctx)};
+
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
+
+            if (this->fmt().empty())
+            {
+                default_format(ymd, temp_context);
+            }
+            else
+            {
+                const std::tm time {.tm_mday=int(unsigned{ymd.day()}), .tm_mon=int(unsigned{ymd.month()}-1), .tm_year=int{ymd.year()}-1900};
+                this->format_tm(time, temp_context);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
         }
-        else
+
+        static void default_format(const std::chrono::year_month_day ymd, format_context& ctx)
         {
-            const std::tm time {.tm_mon=int(unsigned{ymw.month()}-1), .tm_year=int{ymw.year()}-1900, .tm_wday=int(ymw.weekday().c_encoding())};
-            to_stream(ref_os, time, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .locale=fmt.get_locale()});
+            lib2::format_to<"{:%F}">(ctx.locale(), ctx.stream, ymd);
+            if (!ymd.ok())
+            {
+                ctx.stream.write(" is not a valid date");
+            }
         }
 
-        if (fmt.width)
+        static constexpr bool validate_spec(const char spec, const char mod) noexcept
         {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
+            switch (spec)
+            {
+            case 'D':
+            case 'F':
+                return mod == 0;
+            case 'x':
+                return mod == 0 || mod == 'E';
+            }
 
-            to_stream(os, temp_os, s_fmt);
+            return formatter<std::chrono::month>::validate_spec(spec, mod) ||
+                   formatter<std::chrono::year>::validate_spec(spec, mod) ||
+                   formatter<std::chrono::day>::validate_spec(spec, mod);
         }
-
-        return os;
-    }
-
-    static inline void empty_spec(text_ostream& os, const std::chrono::year_month_weekday_last ymwl, const std::locale& loc = {})
-    {
-        os << ymwl.year();
-        os.put('/');
-        empty_spec(os, ymwl.month(), loc);
-        os.put('/');
-        empty_spec(os, ymwl.weekday_last(), loc);
-    }
+    };
 
     export
-    inline text_ostream& operator<<(text_ostream& os, const std::chrono::year_month_weekday_last ymwl)
+    template<>
+    struct formatter<std::chrono::year_month_day_last> : public formatter<std::chrono::year_month_day>
     {
-        empty_spec(os, ymwl);
-        return os;
-    }
+        void format(const std::chrono::year_month_day_last ymdl, format_context& ctx) const
+        {
+            const auto width {this->get_width(ctx)};
+
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
+
+            if (this->fmt().empty())
+            {
+                default_format(ymdl, temp_context);
+            }
+            else
+            {
+                formatter<std::chrono::year_month_day>::format(static_cast<std::chrono::sys_days>(ymdl), temp_context);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
+        }
+
+        static void default_format(const std::chrono::year_month_day_last ymdl, format_context& ctx)
+        {
+            lib2::format_to<"{}/{:L}">(ctx.locale(), ctx.stream, ymdl.year(), ymdl.month_day_last());
+        }
+    };
 
     export
-    text_ostream& to_stream(text_ostream& os, const std::chrono::year_month_weekday_last ymwl, const year_month_weekday_fmt& fmt)
+    template<>
+    struct formatter<std::chrono::year_month_weekday> : public chrono_formatter
     {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
+        void format(const std::chrono::year_month_weekday ymwd, format_context& ctx) const
         {
-            empty_spec(os, ymwl, fmt.get_locale());
+            const auto width {this->get_width(ctx)};
+
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
+
+            if (this->fmt().empty())
+            {
+                default_format(ymwd, temp_context);
+            }
+            else
+            {
+                const std::tm time {.tm_mon=int(unsigned{ymwd.month()}-1), .tm_year=int{ymwd.year()}-1900, .tm_wday=int(ymwd.weekday().c_encoding())};
+                this->format_tm(time, temp_context);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
         }
-        else
+
+        static void default_format(const std::chrono::year_month_weekday ymwd, format_context& ctx)
         {
-            const auto loc {fmt.get_locale()};
-            to_stream(ref_os, std::chrono::year_month_weekday{static_cast<std::chrono::sys_days>(ymwl)}, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .use_locale=true, .locale=&loc});
+            lib2::format_to<"{}/{:L}/{:L}">(ctx.locale(), ctx.stream, ymwd.year(), ymwd.month(), ymwd.weekday_indexed());
         }
 
-        if (fmt.width)
+        static constexpr bool validate_spec(const char spec, const char mod) noexcept
         {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
+            return formatter<std::chrono::month>::validate_spec(spec, mod) ||
+                   formatter<std::chrono::year>::validate_spec(spec, mod) ||
+                   formatter<std::chrono::weekday>::validate_spec(spec, mod);
+        }
+    };
 
-            to_stream(os, temp_os, s_fmt);
+    export
+    template<>
+    struct formatter<std::chrono::year_month_weekday_last> : public formatter<std::chrono::year_month_weekday>
+    {
+        void format(const std::chrono::year_month_weekday_last ymwdl, format_context& ctx) const
+        {
+            const auto width {this->get_width(ctx)};
+
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
+
+            if (this->fmt().empty())
+            {
+                default_format(ymwdl, temp_context);
+            }
+            else
+            {
+                formatter<std::chrono::year_month_weekday>::format(static_cast<std::chrono::sys_days>(ymwdl), temp_context);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
         }
 
-        return os;
-    }
+        static void default_format(const std::chrono::year_month_weekday_last ymwdl, format_context& ctx)
+        {
+            lib2::format_to<"{}/{:L}/{:L}">(ctx.locale(), ctx.stream, ymwdl.year(), ymwdl.month(), ymwdl.weekday_last());
+        }
+    };
 
     export
     template<class Rep, class Period>
-    struct duration_fmt : public chrono_fmt<duration_fmt<Rep, Period>>
+    struct formatter<std::chrono::duration<Rep, Period>> : public chrono_formatter, public precision_parser
     {
-        char fill {' '};
-        align_type align {align_type::left};
-        std::size_t width {0};
-        chrono_spec<duration_fmt<Rep, Period>> spec {};
+        using chrono_formatter::parse;
 
-        bool use_locale {false};
-        const std::locale* locale;
+        void format(const std::chrono::duration<Rep, Period> d, format_context& ctx) const
+        {
+            const auto width {this->get_width(ctx)};
+
+            ostringstream temp_os;
+            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            format_context temp_context {this->get_locale(ctx), ref_os};
+
+            if (this->fmt().empty())
+            {
+                default_format(d, temp_context);
+            }
+            else
+            {
+                const std::chrono::hh_mm_ss<std::chrono::duration<Rep, Period>> hhmmss{d};
+                const std::tm time {
+                    .tm_sec  = int(hhmmss.seconds().count())
+                ,   .tm_min  = int(hhmmss.minutes().count())
+                ,   .tm_hour = int(hhmmss.hours().count())
+                };
+                this->format_tm(time, temp_context, d);
+            }
+
+            if (width)
+            {
+                formatter<std::string_view> str_fmt;
+                str_fmt.fill  = fill;
+                str_fmt.align = align;
+                str_fmt.set_width(width);
+                str_fmt.format(temp_os.view(), ctx);
+            }
+        }
+
+        static void default_format(const std::chrono::duration<Rep, Period> d, format_context& ctx)
+        {
+            lib2::format_to<"{}{}">(ctx.locale(), ctx.stream, d.count(), chrono_suffix<Period>{});
+        }
 
         static constexpr bool validate_spec(const char spec, const char mod) noexcept
         {
@@ -1289,103 +1211,8 @@ namespace lib2
             case 'X':
                 return mod == 0 || mod == 'E';
             default:
-                return chrono_fmt<duration_fmt<Rep, Period>>::validate_spec(spec, mod);
+                return chrono_formatter::validate_spec(spec, mod);
             }
         }
     };
-
-    export
-    template<class Rep, class Period>
-    inline text_ostream& operator<<(text_ostream& os, const std::chrono::duration<Rep, Period> d)
-    {
-        return os << d.count() << chrono_suffix<Period>{};
-    }
-
-    export
-    template<class Rep, class Period>
-    text_ostream& to_stream(text_ostream& os, const std::chrono::duration<Rep, Period> d, const duration_fmt<Rep, Period>& fmt)
-    {
-        ostringstream temp_os;
-        text_ostream& ref_os {fmt.width ? temp_os : os};
-
-        if (fmt.spec.fmt().empty())
-        {
-            os << d;
-        }
-        else
-        {
-            const std::chrono::hh_mm_ss<std::chrono::duration<Rep, Period>> hhmmss{d};
-            const std::tm time {
-                .tm_sec  = int(hhmmss.seconds().count())
-            ,   .tm_min  = int(hhmmss.minutes().count())
-            ,   .tm_hour = int(hhmmss.hours().count())
-            };
-            to_stream(ref_os, time, {.fill=fmt.fill, .spec=fmt.spec.fmt(), .locale=fmt.get_locale()}, d);
-        }
-
-        if (fmt.width)
-        {
-            const str_fmt s_fmt {
-                .fill  = fmt.fill,
-                .align = fmt.align,
-                .width = fmt.width
-            };
-
-            to_stream(os, temp_os, s_fmt);
-        }
-
-        return os;
-    }
-}
-
-namespace std
-{
-    export
-    lib2::day_fmt format_of(std::chrono::day);
-
-    export
-    lib2::month_fmt format_of(std::chrono::month);
-    
-    export
-    lib2::year_fmt format_of(std::chrono::year);
-
-    export
-    lib2::weekday_fmt format_of(std::chrono::weekday);
-
-    export
-    lib2::weekday_fmt format_of(std::chrono::weekday_indexed);
-
-    export
-    lib2::weekday_fmt format_of(std::chrono::weekday_last);
-
-    export
-    lib2::month_day_fmt format_of(std::chrono::month_day);
-
-    export
-    lib2::month_fmt format_of(std::chrono::month_day_last);
-
-    export
-    lib2::month_weekday_fmt format_of(std::chrono::month_weekday);
-
-    export
-    lib2::month_weekday_fmt format_of(std::chrono::month_weekday_last);
-
-    export
-    lib2::year_month_fmt format_of(std::chrono::year_month);
-
-    export
-    lib2::year_month_day_fmt format_of(std::chrono::year_month_day);
-
-    export
-    lib2::year_month_day_fmt format_of(std::chrono::year_month_day_last);
-
-    export
-    lib2::year_month_weekday_fmt format_of(std::chrono::year_month_weekday);
-
-    export
-    lib2::year_month_weekday_fmt format_of(std::chrono::year_month_weekday_last);
-
-    export
-    template<class Rep, class Period>
-    lib2::duration_fmt<Rep, Period> format_of(std::chrono::duration<Rep, Period>);
 }

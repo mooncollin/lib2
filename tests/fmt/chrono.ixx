@@ -14,16 +14,16 @@ namespace lib2::tests::fmt
 
         void operator()() final
         {
-            auto str {lib2::format("{:%Q%q}", std::chrono::seconds{45})};
+            auto str {lib2::format<"{:%Q%q}">(std::chrono::seconds{45})};
             lib2::test::assert_equal(str, "45s");
 
-            str = lib2::format("{:%Q%q}", std::chrono::milliseconds{0});
+            str = lib2::format<"{:%Q%q}">(std::chrono::milliseconds{0});
             lib2::test::assert_equal(str, "0ms");
 
-            str = lib2::format("{:%Q%q}", std::chrono::microseconds{1});
+            str = lib2::format<"{:%Q%q}">(std::chrono::microseconds{1});
             lib2::test::assert_equal(str, "1us");
 
-            str = lib2::format("{:%H:%M:%S (%Q%q)}", std::chrono::seconds{54321});
+            str = lib2::format<"{:%H:%M:%S (%Q%q)}">(std::chrono::seconds{54321});
             lib2::test::assert_equal(str, "15:05:21 (54321s)"); 
         }
     };
