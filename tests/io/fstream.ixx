@@ -66,7 +66,7 @@ namespace lib2::tests::io
         void operator()() final
         {
             lib2::ofstream file {write_test_name};
-            file.write(test_contents.data(), test_contents.size());
+            file.write(reinterpret_cast<const std::byte*>(test_contents.data()), test_contents.size());
             file.flush();
         }
     };

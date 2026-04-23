@@ -288,7 +288,7 @@ namespace lib2
         {
             std::ios ios{nullptr};
             ios.imbue(get_locale(ctx));
-            const auto& time_facet {std::use_facet<std::time_put<char, ostream_iterator<char>>>(ios.getloc())};
+            const auto& time_facet {std::use_facet<std::time_put<char, text_ostream_iterator>>(ios.getloc())};
 
             bool in_format {false};
             char mod {};
@@ -320,7 +320,7 @@ namespace lib2
                 {
                     if (spec == 'O' || spec == 'E')
                     {
-                        time_facet.put(ostream_iterator{ctx.stream}, ios, fill, &value, *begin, spec);
+                        time_facet.put(text_ostream_iterator{ctx.stream}, ios, fill, &value, *begin, spec);
                         continue;
                     }
                 }
@@ -384,7 +384,7 @@ namespace lib2
                     }
                     break;
                 default:
-                    time_facet.put(ostream_iterator{ctx.stream}, ios, fill, &value, spec);
+                    time_facet.put(text_ostream_iterator{ctx.stream}, ios, fill, &value, spec);
                     break;
                 }
             }
@@ -465,7 +465,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -507,7 +507,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -567,7 +567,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -623,7 +623,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -683,7 +683,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -727,7 +727,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -764,7 +764,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -817,7 +817,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -854,7 +854,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -898,7 +898,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -936,7 +936,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -980,7 +980,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -1038,7 +1038,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -1075,7 +1075,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -1120,7 +1120,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())
@@ -1159,7 +1159,7 @@ namespace lib2
             const auto width {this->get_width(ctx)};
 
             ostringstream temp_os;
-            text_ostream& ref_os {width ? temp_os : ctx.stream};
+            text_ostream ref_os {width ? temp_os : ctx.stream};
             format_context temp_context {this->get_locale(ctx), ref_os};
 
             if (this->fmt().empty())

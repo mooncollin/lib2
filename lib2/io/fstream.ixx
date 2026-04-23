@@ -9,7 +9,6 @@ import std;
 import lib2.compact_optional;
 import lib2.memory;
 
-import :character;
 import :ostream;
 import :istream;
 
@@ -46,11 +45,11 @@ namespace lib2
     }
 
     export
-    class ofstream final : public basic_ostream<char>
+    class ofstream final : public ostream
     {
     public:
-        using size_type  = typename basic_ostream<char>::size_type;
-        using ssize_type = typename basic_ostream<char>::ssize_type;
+        using size_type  = ostream::size_type;
+        using ssize_type = ostream::ssize_type;
 
         ofstream() noexcept
             : handle{nullptr} {}
@@ -69,7 +68,7 @@ namespace lib2
 
         ofstream(const ofstream&) = delete;
         ofstream(ofstream&& other) noexcept
-            : basic_ostream<char>{std::move(other)}
+            : ostream{std::move(other)}
             , buf{std::exchange(other.buf, nullptr)}
             , handle{std::exchange(other.handle, nullptr)} {}
 
@@ -84,7 +83,7 @@ namespace lib2
                 }
                 catch (...) {}
 
-                basic_ostream<char>::operator=(std::move(other));
+                ostream::operator=(std::move(other));
                 buf = std::exchange(other.buf, nullptr);
                 handle = std::exchange(other.handle, nullptr);
             }
@@ -108,7 +107,7 @@ namespace lib2
         void swap(ofstream& other) noexcept
         {
             using std::swap;
-            basic_ostream<char>::swap(other);
+            ostream::swap(other);
             swap(buf, other.buf);
             swap(handle, other.handle);
         }
@@ -132,7 +131,7 @@ namespace lib2
 
         void close();
 
-        void setbuf(char* s, size_type size)
+        void setbuf(std::byte* s, size_type size)
         {
             if (s)
             {
@@ -157,12 +156,12 @@ namespace lib2
                     if ((this->pend() - this->pbeg()) < size)
                     {
                         delete[] buf.ptr();
-                        buf = new char[size];
+                        buf = new std::byte[size];
                     }
                 }
                 else
                 {
-                    buf = new char[size];
+                    buf = new std::byte[size];
                 }
                 s = buf.ptr();
             }
@@ -173,24 +172,22 @@ namespace lib2
         
         void flush() override;
 
-        using basic_ostream<char>::write;
-        void write(const char* s, size_type count) override;
-        void fill(const char& ch, size_type count) override;
+        void write(const std::byte* s, size_type count) override;
+        void fill(const std::byte b, size_type count) override;
     protected:
-        void overflow(char) override;
+        void overflow(std::byte) override;
     private:
-        tagged_pointer<char, 1> buf;
+        tagged_pointer<std::byte, 1> buf;
         void* handle;
     };
 
     export
-    class ifstream final : public basic_istream<char>
+    class ifstream final : public istream
     {
     public:
-        using size_type          = typename basic_istream<char>::size_type;
-        using ssize_type         = typename basic_istream<char>::ssize_type;
-        using traits_type        = typename basic_istream<char>::traits_type;
-        using opt_type           = typename basic_istream<char>::opt_type;
+        using size_type  = istream::size_type;
+        using ssize_type = istream::ssize_type;
+        using opt_type   = istream::opt_type;
 
         ifstream() noexcept
             : handle{nullptr} {}
@@ -209,7 +206,7 @@ namespace lib2
 
         ifstream(const ifstream&) = delete;
         ifstream(ifstream&& other) noexcept
-            : basic_istream<char>{std::move(other)}
+            : istream{std::move(other)}
             , buf{std::move(other.buf)}
             , buf_capacity{std::exchange(other.buf_capacity, std::nullopt)}
             , handle{std::exchange(other.handle, nullptr)} {}
@@ -218,7 +215,7 @@ namespace lib2
         ifstream& operator=(ifstream&& other) noexcept
         {
             close();
-            basic_istream<char>::operator=(std::move(other));
+            istream::operator=(std::move(other));
 
             buf = std::move(other.buf);
             buf_capacity = std::exchange(other.buf_capacity, std::nullopt);
@@ -231,7 +228,7 @@ namespace lib2
         {
             using std::swap;
 
-            basic_istream<char>::swap(other);
+            istream::swap(other);
             swap(buf, other.buf);
             swap(handle, other.handle);
             swap(buf_capacity, other.buf_capacity);
@@ -256,7 +253,7 @@ namespace lib2
 
         void close();
 
-        void setbuf(char* const s, const size_type size)
+        void setbuf(std::byte* const s, const size_type size)
         {
             if (s)
             {
@@ -267,7 +264,7 @@ namespace lib2
             {
                 if (!buf_capacity || *buf_capacity < size)
                 {
-                    buf = std::make_unique<char[]>(std::max(size_type{1}, size));
+                    buf = std::make_unique<std::byte[]>(std::max(size_type{1}, size));
                 }
                 this->setg(buf.get(), buf.get(), buf.get());
             }
@@ -287,11 +284,11 @@ namespace lib2
             }
         }
 
-        size_type read(char* s, size_type count) override;
+        size_type read(ostream& os, size_type count) override;
     protected:
         opt_type underflow() override;
     private:
-        std::unique_ptr<char[]> buf;
+        std::unique_ptr<std::byte[]> buf;
         optional_size buf_capacity;
         void* handle;
     };
@@ -299,11 +296,11 @@ namespace lib2
     struct async_io;
 
     export
-    class async_ofstream final : public basic_ostream<char>
+    class async_ofstream final : public ostream
     {
     public:
-        using size_type  = typename basic_ostream<char>::size_type;
-        using ssize_type = typename basic_ostream<char>::ssize_type;
+        using size_type  = ostream::size_type;
+        using ssize_type = ostream::ssize_type;
 
         async_ofstream() noexcept;
 
@@ -321,7 +318,7 @@ namespace lib2
 
         async_ofstream(const async_ofstream&) = delete;
         async_ofstream(async_ofstream&& other) noexcept
-            : basic_ostream<char>{std::move(other)}
+            : ostream{std::move(other)}
             , pending_ios{std::move(other.pending_ios)}
             , free_ios{std::move(other.free_ios)}
             , offset{std::exchange(other.offset, 0)}
@@ -338,7 +335,7 @@ namespace lib2
                 }
                 catch (...) {}
 
-                basic_ostream<char>::operator=(std::move(other));
+                ostream::operator=(std::move(other));
                 pending_ios = std::move(other.pending_ios);
                 free_ios = std::move(other.free_ios);
                 offset = std::exchange(other.offset, 0);
@@ -352,7 +349,7 @@ namespace lib2
         void swap(async_ofstream& other) noexcept
         {
             using std::swap;
-            basic_ostream<char>::swap(other);
+            ostream::swap(other);
             swap(pending_ios, other.pending_ios);
             swap(free_ios, other.free_ios);
             swap(offset, other.offset);
@@ -384,12 +381,10 @@ namespace lib2
         }
         
         void flush() override;
-
-        using basic_ostream<char>::write;
-        void write(const char* s, size_type count) override;
-        void fill(const char& ch, size_type count) override;
+        void write(const std::byte* s, size_type count) override;
+        void fill(const std::byte b, size_type count) override;
     protected:
-        void overflow(char) override;
+        void overflow(std::byte) override;
     private:
         async_io* free_ios;
         async_io* pending_ios;
@@ -397,28 +392,17 @@ namespace lib2
         std::size_t default_buf_cap;
         void* handle;
     };
-    
-    struct io_init
-    {
-        io_init() noexcept;
 
-        lib2::text_ostream* cout_;
-        lib2::text_ostream* cerr_;
-        lib2::text_istream* cin_;
-    };
-
-    io_init& io_initializer() noexcept
-    {
-        static io_init instance;
-        return instance;
-    };
+    text_ostream init_cout() noexcept;
+    text_ostream init_cerr() noexcept;
+    text_istream init_cin() noexcept;
 
     export
-    text_ostream& cout {*io_initializer().cout_};
+    text_ostream cout {init_cout()};
     
     export
-    text_ostream& cerr {*io_initializer().cerr_};
+    text_ostream cerr {init_cerr()};
 
     export
-    text_istream& cin {*io_initializer().cin_};
+    text_istream cin {init_cin()};
 }

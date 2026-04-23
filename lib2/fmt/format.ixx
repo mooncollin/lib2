@@ -125,8 +125,29 @@ namespace lib2
     struct compile_time_checker
     {
         std::tuple<formatter<Args>...> formatters {};
+        std::size_t estimated_str_size {0};
+        std::size_t leading_str_size {0};
+        std::size_t trailing_str_size {0};
+        std::size_t num_literals {0};
+        std::size_t num_args {0};
 
-        constexpr void string_literal(const std::string_view) const noexcept {}
+        constexpr void string_literal(const std::string_view str) noexcept
+        {
+            ++num_literals;
+            estimated_str_size += str.size();
+            const auto pure {str.find_first_of("{}") == std::string_view::npos};
+            if (pure)
+            {
+                if (num_literals == 1 && num_args == 0)
+                {
+                    leading_str_size = str.size();
+                }
+                else
+                {
+                    trailing_str_size = str.size();
+                }
+            }
+        }
 
         template<std::size_t I>
         constexpr void arg(const std::size_t idx, format_parse_context& ctx)
@@ -150,6 +171,8 @@ namespace lib2
 
         constexpr void arg(const std::size_t idx, format_parse_context& ctx)
         {
+            ++num_args;
+            trailing_str_size = 0;
             arg<0>(idx, ctx);
         }
     };
@@ -232,56 +255,11 @@ namespace lib2
         }
     };
 
-    template<string_literal Fmt, auto const& C, std::size_t I, class ArgTuple>
-    constexpr void do_instructions(format_context& ctx, const ArgTuple& args)
-    {
-        if constexpr (I != C.num_instructions)
-        {
-            constexpr auto& instr {std::get<I>(C.instructions)};
-            if constexpr (instr.type == instruction::t_::literal)
-            {
-                if constexpr (instr.size == 1)
-                {
-                    ctx.stream.put(Fmt[instr.idx]);
-                }
-                else
-                {
-                    ctx.stream.write(Fmt.data() + instr.idx, instr.size);
-                }
-            }
-            else
-            {
-                using T = std::remove_cvref_t<std::tuple_element_t<instr.idx, ArgTuple>>;
-                if constexpr (default_formattable<T> && instr.default_fmt)
-                {
-                    std::get<instr.idx>(C.formatters).default_format(std::get<instr.idx>(args), ctx);
-                }
-                else
-                {
-                    std::get<instr.idx>(C.formatters).format(std::get<instr.idx>(args), ctx);
-                }
-            }
-            do_instructions<Fmt, C, I + 1>(ctx, args);
-        }
-    }
+    export
+    text_ostream vformat_to(text_ostream, std::string_view, format_args);
 
-    template<string_literal Fmt, auto const& C, std::size_t I>
-    constexpr void do_literal_instructions(text_ostream& os)
-    {
-        if constexpr (I != C.num_instructions)
-        {
-            constexpr auto& instr {std::get<I>(C.instructions)};
-            if constexpr (instr.size == 1)
-            {
-                os.put(Fmt[instr.idx]);
-            }
-            else
-            {
-                os.write(Fmt.data() + instr.idx, instr.size);
-            }
-            do_literal_instructions<Fmt, C, I + 1>(os);
-        }
-    }
+    export
+    text_ostream vformat_to(const std::locale&, text_ostream, std::string_view, format_args);
 
     export
     template<class... Args>
@@ -295,6 +273,9 @@ namespace lib2
             constexpr format_type_store<Args...> store;
             compile_format_parse_context parse_context {str, store};
             do_format(parse_context, checker);
+            estimated_str_size_ = checker.estimated_str_size;
+            leading_str_size = checker.leading_str_size;
+            trailing_str_size = checker.trailing_str_size;
         }
 
         template<std::size_t N>
@@ -305,8 +286,94 @@ namespace lib2
         {
             return str;
         }
+        
+        [[nodiscard]] constexpr std::size_t estimated_str_size() const noexcept
+        {
+            return estimated_str_size_;
+        }
+
+        inline void format(text_ostream os, const Args&... args) const
+        {
+            auto fmt {str};
+            if (leading_str_size)
+            {
+                if (leading_str_size == 1)
+                {
+                    os.put(str.front());
+                }
+                else
+                {
+                    os.write(str.substr(0, leading_str_size));
+                }
+                fmt.remove_prefix(leading_str_size);
+            }
+
+            if (!fmt.empty())
+            {
+                if (trailing_str_size)
+                {
+                    fmt.remove_suffix(trailing_str_size);
+                }
+
+                vformat_to(os, fmt, make_format_args(args...));
+
+                if (trailing_str_size)
+                {
+                    if (trailing_str_size == 1)
+                    {
+                        os.put(str.back());
+                    }
+                    else
+                    {
+                        os.write(str.substr(str.size() - trailing_str_size));
+                    }
+                }
+            }
+        }
+
+        inline void format(const std::locale& loc, text_ostream os, const Args&... args) const
+        {
+            auto fmt {str};
+            if (leading_str_size)
+            {
+                if (leading_str_size == 1)
+                {
+                    os.put(str.front());
+                }
+                else
+                {
+                    os.write(str.substr(0, leading_str_size));
+                }
+                fmt.remove_prefix(leading_str_size);
+            }
+
+            if (!fmt.empty())
+            {
+                if (trailing_str_size)
+                {
+                    fmt.remove_suffix(trailing_str_size);
+                }
+
+                vformat_to(loc, os, fmt, make_format_args(args...));
+
+                if (trailing_str_size)
+                {
+                    if (trailing_str_size == 1)
+                    {
+                        os.put(str.back());
+                    }
+                    else
+                    {
+                        os.write(str.substr(str.size() - trailing_str_size));
+                    }
+                }
+            }
+        }
     private:
         std::string_view str;
+        std::size_t estimated_str_size_;
+        std::size_t leading_str_size;
+        std::size_t trailing_str_size;
     };
 
     export
@@ -319,7 +386,7 @@ namespace lib2
 
     export
     template<string_literal Fmt, class... Args>
-    constexpr text_ostream& format_to(text_ostream& os, const Args&... args)
+    class cp_format_string
     {
         static constexpr auto collector {[] {
             compile_time_collector<Fmt, Args...> collector;
@@ -328,52 +395,114 @@ namespace lib2
             do_format(parse_context, collector);
             return collector;
         }()};
+    public:
+        consteval cp_format_string() noexcept {}
 
-        if constexpr (collector.all_literals())
+        static inline void format(text_ostream os, const Args&... args)
         {
-            do_literal_instructions<Fmt, collector, 0>(os);
-        }
-        else if constexpr (collector.all_default_fmt())
-        {
-            format_context ctx {os, {}};
-            do_instructions<Fmt, collector, 0>(ctx, std::forward_as_tuple(args...));
-        }
-        else
-        {
-            format_context ctx {os, make_format_args(args...)};
-            do_instructions<Fmt, collector, 0>(ctx, std::forward_as_tuple(args...));
+            if constexpr (collector.all_literals())
+            {
+                do_format<0>(os);
+            }
+            else if constexpr (collector.all_default_fmt())
+            {
+                format_context ctx {os, {}};
+                do_format<0>(ctx, std::forward_as_tuple(args...));
+            }
+            else
+            {
+                const auto store {make_format_args(args...)};
+                format_context ctx {os, store};
+                do_format<0>(ctx, std::forward_as_tuple(args...));
+            }
         }
 
+        static inline void format(const std::locale& loc, text_ostream os, const Args&... args)
+        {
+            if constexpr (collector.all_literals())
+            {
+                do_format<0>(os);
+            }
+            else if constexpr (collector.all_default_fmt())
+            {
+                format_context ctx {loc, os, {}};
+                do_format<0>(ctx, std::forward_as_tuple(args...));
+            }
+            else
+            {
+                const auto store {make_format_args(args...)};
+                format_context ctx {loc, os, store};
+                do_format<0>(ctx, std::forward_as_tuple(args...));
+            }
+        }
+    private:
+        template<std::size_t I>
+        static inline void do_format(text_ostream os)
+        {
+            if constexpr (I != collector.num_instructions)
+            {
+                constexpr auto& instr {std::get<I>(collector.instructions)};
+                if constexpr (instr.size == 1)
+                {
+                    os.put(Fmt[instr.idx]);
+                }
+                else
+                {
+                    os.write(Fmt.data() + instr.idx, instr.size);
+                }
+                do_format<I + 1>(os);
+            }
+        }
+
+        template<std::size_t I, class ArgTuple>
+        static inline void do_format(format_context& ctx, const ArgTuple& args)
+        {
+            if constexpr (I != collector.num_instructions)
+            {
+                constexpr auto& instr {std::get<I>(collector.instructions)};
+                if constexpr (instr.type == instruction::t_::literal)
+                {
+                    if constexpr (instr.size == 1)
+                    {
+                        ctx.stream.put(Fmt[instr.idx]);
+                    }
+                    else
+                    {
+                        ctx.stream.write(Fmt.data() + instr.idx, instr.size);
+                    }
+                }
+                else
+                {
+                    using T = std::remove_cvref_t<std::tuple_element_t<instr.idx, ArgTuple>>;
+                    if constexpr (default_formattable<T> && instr.default_fmt)
+                    {
+                        std::get<instr.idx>(collector.formatters).default_format(std::get<instr.idx>(args), ctx);
+                    }
+                    else
+                    {
+                        std::get<instr.idx>(collector.formatters).format(std::get<instr.idx>(args), ctx);
+                    }
+                }
+                do_format<I + 1>(ctx, args);
+            }
+        }
+    };
+
+    export
+    template<string_literal Fmt, class... Args>
+    constexpr text_ostream format_to(text_ostream os, const Args&... args)
+    {
+        constexpr cp_format_string<Fmt, Args...> fmt_str;
+        fmt_str.format(os, args...);
         return os;
     }
 
     export
     template<string_literal Fmt, class... Args>
-    inline text_ostream& format_to(const std::locale& loc, text_ostream& os, const Args&... args)
+    inline text_ostream format_to(const std::locale& loc, text_ostream os, const Args&... args)
     {
-        static constexpr auto collector {[] {
-            compile_time_collector<Fmt, Args...> collector;
-            constexpr format_type_store<Args...> store;
-            compile_format_parse_context parse_context {Fmt, store};
-            do_format(parse_context, collector);
-            return collector;
-        }()};
-
-        if constexpr (collector.all_literals())
-        {
-            do_literal_instructions<Fmt, collector, 0>(os);
-        }
-        else if constexpr (collector.all_default_fmt())
-        {
-            format_context ctx {loc, os, {}};
-            do_instructions<Fmt, collector, 0>(ctx, std::forward_as_tuple(args...));
-        }
-        else
-        {
-            format_context ctx {loc, os, make_format_args(args...)};
-            do_instructions<Fmt, collector, 0>(ctx, std::forward_as_tuple(args...));
-        }
-
+        constexpr cp_format_string<Fmt, Args...> fmt_str;
+        fmt_str.format(loc, os, args...);
         return os;
     }
 
@@ -396,12 +525,6 @@ namespace lib2
     }
 
     export
-    text_ostream& vformat_to(text_ostream&, std::string_view, format_args);
-
-    export
-    text_ostream& vformat_to(const std::locale&, text_ostream&, std::string_view, format_args);
-
-    export
     inline std::string vformat(const std::string_view fmt, const format_args args)
     {
         ostringstream ss;
@@ -419,37 +542,47 @@ namespace lib2
 
     export
     template<class... Args>
-    text_ostream& format_to(text_ostream& os, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
+    inline text_ostream format_to(text_ostream os, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
-        return vformat_to(os, fmt.get(), make_format_args(args...));
+        fmt.format(os, args...);
+        return os;
     }
 
     export
     template<class... Args>
-    text_ostream& format_to(const std::locale& loc, text_ostream& os, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
+    inline text_ostream format_to(const std::locale& loc, text_ostream os, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
-        return vformat_to(loc, os, fmt.get(), make_format_args(args...));
+        fmt.format(loc, os, args...);
+        return os;
     }
 
     export
     template<class... Args>
-    std::string format(const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
+    inline std::string format(const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
-        return vformat(fmt.get(), make_format_args(args...));
+        std::string str;
+        str.reserve(fmt.estimated_str_size());
+        ostringstream ss {std::move(str)};
+        format_to(ss, fmt, args...);
+        return std::move(ss).str();
     }
 
     export
     template<class... Args>
-    std::string format(const std::locale& loc, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
+    inline std::string format(const std::locale& loc, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
-        return vformat(loc, fmt.get(), make_format_args(args...));
+        std::string str;
+        str.reserve(fmt.estimated_str_size());
+        ostringstream ss {std::move(str)};
+        format_to(loc, ss, fmt, args...);
+        return std::move(ss).str();
     }
 
     export
     template<string_literal Fmt, class... Args>
     constexpr std::size_t formatted_size(const Args&... args)
     {
-        lib2::size_ostream<char> sos;
+        lib2::size_ostream sos;
         format_to<Fmt>(sos, args...);
         return sos.size();
     }
@@ -458,7 +591,7 @@ namespace lib2
     template<string_literal Fmt, class... Args>
     inline std::size_t formatted_size(const std::locale& loc, const Args&... args)
     {
-        lib2::size_ostream<char> sos;
+        lib2::size_ostream sos;
         format_to<Fmt>(loc, sos, args...);
         return sos.size();
     }
@@ -467,8 +600,8 @@ namespace lib2
     template<class... Args>
     inline std::size_t formatted_size(const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
-        lib2::size_ostream<char> sos;
-        vformat_to(sos, fmt, args...);
+        lib2::size_ostream sos;
+        format_to(sos, fmt, args...);
         return sos.size();
     }
 
@@ -476,35 +609,35 @@ namespace lib2
     template<class... Args>
     inline std::size_t formatted_size(const std::locale& loc, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
-        lib2::size_ostream<char> sos;
-        vformat_to(sos, loc, fmt, args...);
+        lib2::size_ostream sos;
+        format_to(loc, sos, fmt, args...);
         return sos.size();
     }
 
     export
     template<string_literal Fmt, class... Args>
-    void print(const Args&... args)
+    inline void print(const Args&... args)
     {
         format_to<Fmt>(lib2::cout, args...);
     }
 
     export
     template<string_literal Fmt, class... Args>
-    void print(const std::locale& loc, const Args&... args)
+    inline void print(const std::locale& loc, const Args&... args)
     {
         format_to<Fmt>(loc, lib2::cout, args...);
     }
 
     export
     template<class... Args>
-    void print(const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
+    inline void print(const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
         format_to(lib2::cout, fmt, args...);
     }
 
     export
     template<class... Args>
-    void print(const std::locale& loc, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
+    inline void print(const std::locale& loc, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
         format_to(loc, lib2::cout, fmt, args...);
     }

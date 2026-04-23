@@ -1,33 +1,105 @@
 export module lib2.io:iostream;
 
-import :character;
 import :ostream;
 import :istream;
 
 namespace lib2
 {
     export
-    template<class T>
-    class basic_iostream : public basic_ostream<T>, public basic_istream<T>
+    class iostream : public ostream, public istream
     {
     public:
-        using value_type = T;
-
-        virtual ~basic_iostream() noexcept = default;
+        virtual ~iostream() noexcept = default;
     protected:
-        basic_iostream() noexcept = default;
-        basic_iostream(const basic_iostream&) noexcept = default;
+        iostream() noexcept = default;
+        iostream(const iostream&) noexcept = default;
 
-        void swap(basic_iostream& other) noexcept
+        void swap(iostream& other) noexcept
         {
-            basic_istream<T>::swap(other);
-            basic_ostream<T>::swap(other);
+            istream::swap(other);
+            ostream::swap(other);
         }
     };
 
     export
-    using binary_iostream = basic_iostream<std::byte>;
+    struct text_iostream
+    {
+        iostream& stream;
 
-    export
-    using text_iostream = basic_iostream<char>;
+        constexpr text_iostream(iostream& stream) noexcept
+            : stream{stream} {}
+
+        constexpr inline void put(const char ch)
+        {
+            stream.put(std::byte(ch));
+        }
+
+        constexpr inline void write(const std::string_view str)
+        {
+            stream.write(reinterpret_cast<const std::byte*>(str.data()), str.size());
+        }
+
+        template<class F>
+            requires(std::is_invocable_r_v<char*, F, char*, char*>)
+        constexpr inline ostream::size_type produce(F&& f) noexcept(std::is_nothrow_invocable_v<F, char*, char*>)
+        {
+            return stream.produce([&](const auto beg, const auto end) {
+                return reinterpret_cast<char*>(std::invoke(std::forward<F>(f), reinterpret_cast<char*>(beg), reinterpret_cast<char*>(end)));
+            });
+        }
+
+        constexpr inline opt_char get()
+        {
+            return stream.get();
+        }
+
+        constexpr inline opt_char bump()
+        {
+            return stream.bump();
+        }
+
+        constexpr inline opt_char next()
+        {
+            return stream.next();
+        }
+
+        constexpr inline istream::size_type read(text_ostream os, const istream::size_type count)
+        {
+            return stream.read(os.stream, count);
+        }
+
+        constexpr inline istream::size_type read(text_ostream os, const istream::size_type count, const char delim)
+        {
+            return stream.read(os.stream, count, std::byte(delim));
+        }
+
+        constexpr inline istream::size_type ignore(const istream::size_type count)
+        {
+            return stream.ignore(count);
+        }
+
+        constexpr inline istream::size_type ignore(const istream::size_type count, const char delim)
+        {
+            return stream.ignore(count, std::byte(delim));
+        }
+
+        template<class F>
+            requires(std::is_invocable_r_v<const char*, F, const char*, const char*>)
+        constexpr inline istream::size_type consume(F&& f) noexcept(std::is_nothrow_invocable_v<F, const char*, const char*>)
+        {
+            return stream.consume([&](const auto beg, const auto end) {
+                return reinterpret_cast<const std::byte*>(std::invoke(std::forward<F>(f), reinterpret_cast<const char*>(beg), reinterpret_cast<const char*>(end)));
+            });
+        }
+
+        constexpr inline operator text_ostream() noexcept
+        {
+            return stream;
+        }
+
+        constexpr inline operator text_istream() noexcept
+        {
+            return stream;
+        }
+    };
 }

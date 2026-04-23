@@ -8,40 +8,37 @@ import :istream;
 namespace lib2
 {
     export
-    template<class T>
-    class basic_ospanstream : public basic_ostream<T>
+    class ospanstream : public ostream
     {
     public:
-        using value_type = typename basic_ostream<T>::value_type;
-        using size_type  = typename basic_ostream<T>::size_type;
-        using ssize_type = typename basic_ostream<T>::ssize_type;
+        using value_type = ostream::value_type;
+        using size_type  = ostream::size_type;
+        using ssize_type = ostream::ssize_type;
 
-        constexpr basic_ospanstream() noexcept = default;
+        constexpr ospanstream() noexcept = default;
 
-        explicit basic_ospanstream(const std::span<T> buf) noexcept
+        explicit ospanstream(const std::span<std::byte> buf) noexcept
         {
             span(buf);
         }
 
-        basic_ospanstream(const basic_ospanstream&) = delete;
-        basic_ospanstream(basic_ospanstream&&) noexcept = default;
+        ospanstream(const ospanstream&) = delete;
+        ospanstream(ospanstream&&) noexcept = default;
 
-        basic_ospanstream& operator=(const basic_ospanstream&) = delete;
-        basic_ospanstream& operator=(basic_ospanstream&&) noexcept = default;
+        ospanstream& operator=(const ospanstream&) = delete;
+        ospanstream& operator=(ospanstream&&) noexcept = default;
 
-        constexpr std::span<T> span() const noexcept
+        constexpr std::span<std::byte> span() const noexcept
         {
             return {this->pcur(), this->pend()};
         }
 
-        constexpr void span(const std::span<T> s) noexcept
+        constexpr void span(const std::span<std::byte> s) noexcept
         {
             this->setp(s.data(), s.data() + s.size());
         }
-
-        using basic_ostream<T>::write;
         
-        constexpr void write(const T* vals, size_type count) override
+        constexpr void write(const std::byte* const vals, const size_type count) override
         {
             if (count > this->write_available())
             {
@@ -52,77 +49,92 @@ namespace lib2
             this->pbump(count);
         }
 
-        constexpr void fill(const T& val, size_type count) override
+        constexpr void fill(const std::byte val, const size_type count) override
         {
             if (count > this->write_available())
             {
-                throw std::out_of_range{"ospanstream::write"};
+                throw std::out_of_range{"ospanstream::fill"};
             }
             
-            std::fill_n(val, count, this->pcur());
+            std::fill_n(this->pcur(), count, val);
             this->pbump(count);
         }
 
-        constexpr void swap(basic_ospanstream& other) noexcept
+        constexpr void swap(ospanstream& other) noexcept
         {
-            basic_ostream<T>::swap(other);
+            ostream::swap(other);
         }
     };
 
     export
-    using binary_ospanstream = basic_ospanstream<std::byte>;
-
-    export
-    using text_ospanstream = basic_ospanstream<char>;
-
-    export
-    template<class T>
-    class basic_ispanstream : public basic_istream<T>
+    class ispanstream : public istream
     {
     public:
-        using value_type = typename basic_istream<T>::value_type;
-        using size_type  = typename basic_istream<T>::size_type;
-        using ssize_type = typename basic_istream<T>::ssize_type;
+        using value_type = istream::value_type;
+        using size_type  = istream::size_type;
+        using ssize_type = istream::ssize_type;
+        using opt_type   = istream::opt_type;
 
-        constexpr basic_ispanstream() noexcept = default;
+        constexpr ispanstream() noexcept = default;
 
-        explicit basic_ispanstream(const std::span<const T> buf) noexcept
+        explicit ispanstream(const std::span<const std::byte> buf) noexcept
         {
             span(buf);
         }
 
-        basic_ispanstream(const basic_ispanstream&) = delete;
-        basic_ispanstream(basic_ispanstream&&) noexcept = default;
+        ispanstream(const ispanstream&) = delete;
+        ispanstream(ispanstream&&) noexcept = default;
 
-        basic_ispanstream& operator=(const basic_ispanstream&) = delete;
-        basic_ispanstream& operator=(basic_ispanstream&&) noexcept = default;
+        ispanstream& operator=(const ispanstream&) = delete;
+        ispanstream& operator=(ispanstream&&) noexcept = default;
 
-        constexpr std::span<const T> span() const noexcept
+        constexpr std::span<const std::byte> span() const noexcept
         {
             return {this->gcur(), this->gend()};
         }
 
-        constexpr void span(const std::span<const T> s) noexcept
+        constexpr void span(const std::span<const std::byte> s) noexcept
         {
-            this->setg(s.data(), s.data(), s.data() + s.size());
+            this->setg(const_cast<std::byte*>(s.data()), const_cast<std::byte*>(s.data()), const_cast<std::byte*>(s.data() + s.size()));
         }
 
-        constexpr size_type read(T* buf, size_type count) override
+        constexpr size_type read(ostream& os, size_type count) override
         {
             count = std::min(count, this->read_available());
-            std::copy_n(this->gcur(), count, buf);
+            os.write(this->gcur(), count);
+            this->gbump(count);
             return count;
         }
 
-        constexpr void swap(basic_ispanstream& other) noexcept
+        constexpr size_type read(ostream& os, size_type count, const std::byte delim) override
         {
-            basic_istream<T>::swap(other);
+            count = std::min(count, this->read_available());
+            const auto x {std::find(this->gcur(), this->gcur() + count, delim)};
+            const auto read_count {static_cast<size_type>(x - this->gcur())};
+            os.write(this->gcur(), read_count);
+            this->gbump(read_count);
+            return read_count;
+        }
+
+        constexpr size_type ignore(size_type count) override
+        {
+            count = std::min(count, this->read_available());
+            this->gbump(count);
+            return count;
+        }
+
+        constexpr size_type ignore(size_type count, const std::byte delim) override
+        {
+            count = std::min(count, this->read_available());
+            const auto x {std::find(this->gcur(), this->gcur() + count, delim)};
+            const auto read_count {static_cast<size_type>(x - this->gcur())};
+            this->gbump(read_count);
+            return read_count;
+        }
+
+        constexpr void swap(ispanstream& other) noexcept
+        {
+            istream::swap(other);
         }
     };
-
-    export
-    using binary_ispanstream = basic_ispanstream<std::byte>;
-
-    export
-    using text_ispanstream = basic_ispanstream<char>;
 }

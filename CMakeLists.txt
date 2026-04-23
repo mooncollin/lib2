@@ -9,6 +9,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(lib2 LANGUAGES CXX)
 if (MSVC)
     add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
+    add_compile_options(/GL)
+    add_link_options(/LTCG)
 endif()
 
 enable_testing()

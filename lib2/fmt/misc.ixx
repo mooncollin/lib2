@@ -221,7 +221,7 @@ namespace lib2
         static void default_format(const std::filesystem::path& value, format_context& ctx)
         {
             #if _WIN32
-            lib2::utf16_to_utf8(value.native(), ostream_iterator{ctx.stream});
+            lib2::utf16_to_utf8(value.native(), text_ostream_iterator{ctx.stream});
             #else
             str_fmt.format(value.native(), ctx);
             #endif

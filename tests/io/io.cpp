@@ -31,7 +31,6 @@ namespace lib2::tests::io
         suite.add_test_case<istream_ignore_test>();
         suite.add_test_case<istream_ignore_delim_test>();
         suite.add_test_case<istream_iterator_test>();
-        suite.add_test_case<istream_ws_test>();
 
         suite.add_test_case<ofstream_default_constructor_test>();
         suite.add_test_case<ofstream_open_test>();

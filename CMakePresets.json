@@ -23,6 +23,14 @@
       }
     },
     {
+      "name": "base-release-debug",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
       "name": "windows-debug",
       "displayName": "Windows Debug",
       "inherits": "base-debug",
@@ -33,6 +41,12 @@
       "displayName": "Windows Release",
       "inherits": "base-release",
       "binaryDir": "${sourceDir}/build/windows/release"
+    },
+    {
+      "name": "windows-release-debug",
+      "displayName": "Windows Release (With Debug Info)",
+      "inherits": "base-release-debug",
+      "binaryDir": "${sourceDir}/build/windows/release_with_deb_info"
     },
     {
       "name": "linux-debug",

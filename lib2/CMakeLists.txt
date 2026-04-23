@@ -18,8 +18,6 @@ PRIVATE
 )
 endif()
 
-target_include_directories(lib2 PUBLIC ${CMAKE_SOURCE_DIR})
-
 add_subdirectory(platform)
 add_subdirectory(type_traits)
 add_subdirectory(meta)

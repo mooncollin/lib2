@@ -5,28 +5,112 @@ import std;
 import lib2.concepts;
 import lib2.strings;
 import lib2.meta;
+import lib2.compact_optional;
 
-import :character;
-import :stream_traits;
+import :ostream;
 
 namespace lib2
 {
     export
-    template<class T>
     class istream_iterator;
 
     export
-    template<class T>
-    class basic_istream
+    class text_istream_iterator;
+
+    export
+    class opt_byte : private compact_optional<int, -1>
+    {
+        using base = compact_optional<int, -1>;
+        friend class opt_char;
+    public:
+        constexpr opt_byte() noexcept = default;
+        constexpr opt_byte(std::nullopt_t) noexcept
+            : base{std::nullopt} {}
+
+        constexpr opt_byte(const std::byte value) noexcept
+            : base{static_cast<int>(value)} {}
+
+        constexpr opt_byte(const opt_byte&) noexcept = default;
+
+        using base::has_value;
+        
+        constexpr explicit operator bool() const noexcept
+        {
+            return has_value();
+        }
+
+        constexpr std::byte operator*() const noexcept
+        {
+            return static_cast<std::byte>(base::operator*());
+        }
+
+        constexpr bool operator==(const opt_byte&) const noexcept = default;
+        constexpr bool operator!=(const opt_byte&) const noexcept = default;
+
+        constexpr bool operator==(const std::byte value) const noexcept
+        {
+            return static_cast<int>(value) == base::operator*();
+        }
+
+        constexpr bool operator!=(const std::byte value) const noexcept
+        {
+            return !(*this == value);
+        }
+    };
+
+    export
+    class opt_char : private compact_optional<int, -1>
+    {
+        using base = compact_optional<int, -1>;
+    public:
+        constexpr opt_char() noexcept = default;
+        constexpr opt_char(std::nullopt_t) noexcept
+            : base{std::nullopt} {}
+
+        constexpr opt_char(const opt_byte value) noexcept
+            : base{value} {}
+
+        constexpr opt_char(const char value) noexcept
+            : base{static_cast<int>(value)} {}
+
+        constexpr opt_char(const opt_char&) noexcept = default;
+
+        using base::has_value;
+        
+        constexpr explicit operator bool() const noexcept
+        {
+            return has_value();
+        }
+
+        constexpr char operator*() const noexcept
+        {
+            return static_cast<char>(base::operator*());
+        }
+
+        constexpr bool operator==(const opt_char&) const noexcept = default;
+        constexpr bool operator!=(const opt_char&) const noexcept = default;
+
+        constexpr bool operator==(const char value) const noexcept
+        {
+            return static_cast<int>(value) == base::operator*();
+        }
+
+        constexpr bool operator!=(const char value) const noexcept
+        {
+            return !(*this == value);
+        }
+    };
+
+    export
+    class istream
     {
     public:
-        using value_type    = T;
+        using value_type    = std::byte;
         using size_type     = std::size_t;
         using ssize_type    = std::make_signed_t<size_type>;
-        using traits_type   = stream_traits<T>;
-        using opt_type      = typename stream_traits<T>::opt_type;
+        using opt_type      = opt_byte;
 
-        virtual ~basic_istream() noexcept = default;
+        virtual ~istream() noexcept = default;
 
         [[nodiscard]] constexpr size_type read_available() const noexcept
         {
@@ -63,20 +147,20 @@ namespace lib2
             return {};
         }
 
-        constexpr virtual size_type read(T* buf, size_type count)
+        constexpr virtual size_type read(ostream& os, size_type count)
         {
             const auto save {count};
             while (count)
             {
                 if (const auto avail {std::min(count, read_available())})
                 {
-                    buf = std::copy_n(gcur_, avail, buf);
+                    os.write(gcur_, avail);
                     gcur_ += avail;
                     count -= avail;
                 }
-                else if (auto val {uflow()})
+                else if (const auto val {uflow()})
                 {
-                    *buf++ = std::move(*val);
+                    os.put(*val);
                     --count;
                 }
                 else
@@ -88,7 +172,7 @@ namespace lib2
             return save - count;
         }
 
-        constexpr virtual size_type read(T* buf, size_type count, const T& delim)
+        constexpr virtual size_type read(ostream& os, size_type count, const std::byte delim)
         {
             const auto save {count};
             while (count)
@@ -97,8 +181,8 @@ namespace lib2
                 {
                     const auto end {gcur_ + avail};
                     const auto x {std::find(gcur_, end, delim)};
-                    const auto read_count {x - gcur_};
-                    buf = std::copy(gcur_, x, buf);
+                    const auto read_count {static_cast<size_type>(x - gcur_)};
+                    os.write(gcur_, read_count);
                     gcur_  = x;
                     count -= read_count;
                     if (x != end)
@@ -106,13 +190,13 @@ namespace lib2
                         break;
                     }
                 }
-                else if (auto val {underflow()})
+                else if (const auto val {underflow()})
                 {
                     if (val == delim)
                     {
                         break;
                     }
-                    *buf++ = std::move(*val);
+                    os.put(*val);
                     gcur_ += read_available();
                     --count;
                 }
@@ -153,7 +237,7 @@ namespace lib2
             return save - count;
         }
 
-        constexpr virtual size_type ignore(size_type count, const T& delim)
+        constexpr virtual size_type ignore(size_type count, const std::byte delim)
         {
             if (count == std::numeric_limits<size_type>::max())
             {
@@ -177,7 +261,7 @@ namespace lib2
                         break; 
                     }
                 }
-                else if (auto val {uflow()})
+                else if (const auto val {uflow()})
                 {
                     --count;
                     if (val == delim)
@@ -194,49 +278,42 @@ namespace lib2
             return save - count;
         }
 
+        size_type read(std::byte* buf, size_type count);
+        size_type read(std::byte* buf, size_type count, std::byte delim);
+
         constexpr virtual void sync() {}
 
-        basic_istream& operator>>(basic_istream& (*func)(basic_istream&))
-        {
-            func(*this);
-            return *this;
-        }
-
-        basic_istream& operator>>(basic_istream& (*func)(basic_istream&) noexcept) noexcept
-        {
-            func(*this);
-            return *this;
-        }
-
-        istream_iterator<T> begin();
-        static constexpr constexpr_value<std::default_sentinel> end{};
+        istream_iterator begin();
+        static constexpr inline constexpr_value<std::default_sentinel> end{};
 
         template<class F>
-            requires(std::is_invocable_r_v<const T*, F, const T*, const T*>)
-        constexpr size_type consume(F&& f) noexcept(std::is_nothrow_invocable_v<F, const T*, const T*>)
+            requires(std::is_invocable_r_v<const std::byte*, F, const std::byte*, const std::byte*>)
+        constexpr size_type consume(F&& f) noexcept(std::is_nothrow_invocable_v<F, const std::byte*, const std::byte*>)
         {
-            const auto old_gcur {std::exchange(gcur_, std::invoke(std::forward<F>(f), gcur_, gend_))};
-            return static_cast<size_type>(gcur_ - old_gcur);
+            const auto new_gcur {std::invoke(std::forward<F>(f), gcur_, gend_)};
+            const auto amount {static_cast<size_type>(new_gcur - gcur_)};
+            gcur_ += amount;
+            return amount;
         }
     protected:
-        constexpr basic_istream() noexcept
+        constexpr istream() noexcept
             : gbeg_{nullptr}
             , gcur_{nullptr}
             , gend_{nullptr} {}
 
-        constexpr basic_istream(const basic_istream&) noexcept = default;
+        constexpr istream(const istream&) noexcept = default;
 
-        [[nodiscard]] constexpr T* gbeg() const noexcept
+        [[nodiscard]] constexpr std::byte* gbeg() const noexcept
         {
             return gbeg_;
         }
 
-        [[nodiscard]] constexpr T* gcur() const noexcept
+        [[nodiscard]] constexpr std::byte* gcur() const noexcept
         {
             return gcur_;
         }
 
-        [[nodiscard]] constexpr T* gend() const noexcept
+        [[nodiscard]] constexpr std::byte* gend() const noexcept
         {
             return gend_;
         }
@@ -246,7 +323,7 @@ namespace lib2
             return {};
         }
 
-        constexpr virtual opt_type uflow()
+        constexpr opt_type uflow()
         {
             const auto val {underflow()};
             gcur_ += static_cast<bool>(read_available());
@@ -258,23 +335,23 @@ namespace lib2
             gcur_ += count;
         }
 
-        constexpr void setg(T* const gb, T* const gc, T* const ge) noexcept
+        constexpr void setg(std::byte* const gb, std::byte* const gc, std::byte* const ge) noexcept
         {
             gbeg_ = gb;
             gcur_ = gc;
             gend_ = ge;
         }
 
-        constexpr void swap(basic_istream& other) noexcept
+        constexpr void swap(istream& other) noexcept
         {
             std::swap(gbeg_, other.gbeg_);
             std::swap(gcur_, other.gcur_);
             std::swap(gend_, other.gend_);
         }
     private:
-        T* gbeg_;
-        T* gcur_;
-        T* gend_;
+        std::byte* gbeg_;
+        std::byte* gcur_;
+        std::byte* gend_;
 
         constexpr size_type ignore_unlimited()
         {
@@ -289,7 +366,7 @@ namespace lib2
             return count;
         }
 
-        constexpr size_type ignore_unlimited(const T& delim)
+        constexpr size_type ignore_unlimited(const std::byte delim)
         {
             size_type count {0};
             while (true)
@@ -320,32 +397,24 @@ namespace lib2
         }
     };
 
-    export
-    using binary_istream = basic_istream<std::byte>;
-
-    export
-    using text_istream = basic_istream<char>;
-
-    template<class T>
     class istream_iterator
     {
     public:
         using iterator_category = std::input_iterator_tag;
-        using value_type = T;
+        using value_type = std::byte;
         using difference_type = std::ptrdiff_t;
-        using pointer = const T*;
-        using reference = const T&;
-        using istream_type = basic_istream<T>;
+        using pointer = const value_type*;
+        using reference = const value_type&;
 
-        constexpr istream_iterator(const std::default_sentinel_t = {}) noexcept(std::is_nothrow_default_constructible_v<T>)
+        constexpr istream_iterator(const std::default_sentinel_t = {}) noexcept
             : value{}, stream{nullptr} {}
 
-        constexpr istream_iterator(istream_type& stream)
+        constexpr istream_iterator(istream& stream)
             : value{}, stream{std::addressof(stream)}
         {
-            if (auto val {stream.get()})
+            if (const auto val {stream.get()})
             {
-                value = std::move(*val);
+                value = *val;
             }
             else
             {
@@ -355,21 +424,16 @@ namespace lib2
 
         constexpr istream_iterator(const istream_iterator& other) noexcept = default;
 
-        constexpr const T& operator*() const
+        constexpr const std::byte operator*() const
         {
             return value;
         }
 
-        constexpr const T* operator->() const
-        {
-            return std::addressof(value);
-        }
-
         constexpr istream_iterator& operator++()
         {
-            if (auto val {stream->next()})
+            if (const auto val {stream->next()})
             {
-                value = std::move(*val);
+                value = *val;
             }
             else
             {
@@ -397,69 +461,183 @@ namespace lib2
             return !stream;
         }
     private:
-        T value;
-        istream_type* stream;
+        std::byte value;
+        istream* stream;
     };
 
-    template<class T>
-    istream_iterator<T> basic_istream<T>::begin()
+    export
+    struct text_istream
+    {
+        istream& stream;
+
+        constexpr text_istream(istream& stream) noexcept
+            : stream{stream} {}
+
+        [[nodiscard]] constexpr istream::size_type read_available() const noexcept
+        {
+            return stream.read_available();
+        }
+
+        constexpr inline opt_char get()
+        {
+            return stream.get();
+        }
+
+        constexpr inline opt_char bump()
+        {
+            return stream.bump();
+        }
+
+        constexpr inline opt_char next()
+        {
+            return stream.next();
+        }
+
+        constexpr inline istream::size_type read(text_ostream os, const istream::size_type count)
+        {
+            return stream.read(os.stream, count);
+        }
+
+        constexpr inline istream::size_type read(text_ostream os, const istream::size_type count, const char delim)
+        {
+            return stream.read(os.stream, count, std::byte(delim));
+        }
+
+        constexpr inline istream::size_type ignore(const istream::size_type count)
+        {
+            return stream.ignore(count);
+        }
+
+        constexpr inline istream::size_type ignore(const istream::size_type count, const char delim)
+        {
+            return stream.ignore(count, std::byte(delim));
+        }
+
+        istream::size_type read(char* buf, istream::size_type count);
+        istream::size_type read(char* buf, istream::size_type count, char delim);
+
+        template<class F>
+            requires(std::is_invocable_r_v<const char*, F, const char*, const char*>)
+        constexpr inline istream::size_type consume(F&& f) noexcept(std::is_nothrow_invocable_v<F, const char*, const char*>)
+        {
+            return stream.consume([&](const auto beg, const auto end) {
+                return reinterpret_cast<const std::byte*>(std::invoke(std::forward<F>(f), reinterpret_cast<const char*>(beg), reinterpret_cast<const char*>(end)));
+            });
+        }
+
+        text_istream_iterator begin();
+        static constexpr inline constexpr_value<std::default_sentinel> end{};
+    };
+
+    class text_istream_iterator
+    {
+    public:
+        using iterator_category = std::input_iterator_tag;
+        using value_type = char;
+        using difference_type = std::ptrdiff_t;
+        using pointer = const value_type*;
+        using reference = const value_type&;
+
+        constexpr text_istream_iterator(const std::default_sentinel_t = {}) noexcept
+            : it{} {}
+
+        constexpr text_istream_iterator(text_istream is)
+            : it{is.stream} {}
+
+        constexpr text_istream_iterator(const text_istream_iterator& other) noexcept = default;
+
+        constexpr const char operator*() const
+        {
+            return static_cast<char>(*it);
+        }
+
+        constexpr text_istream_iterator& operator++()
+        {
+            ++it;
+            return *this;
+        }
+
+        constexpr text_istream_iterator operator++(int)
+        {
+            auto temp {*this};
+            ++*this;
+            return temp;
+        }
+
+        constexpr bool operator==(const text_istream_iterator&) const noexcept = default;
+        constexpr bool operator!=(const text_istream_iterator&) const noexcept = default;
+
+        constexpr bool operator==(const std::default_sentinel_t) const noexcept
+        {
+            return it == std::default_sentinel;
+        }
+    private:
+        istream_iterator it;
+    };
+
+    istream_iterator istream::begin()
     {
         return {*this};
     }
 
-    export
-    text_istream& ws(text_istream& is)
+    text_istream_iterator text_istream::begin()
     {
-        while (is.get())
-        {
-            is.consume([](const auto begin, const auto end) {
-                return std::find_if_not(begin, end, isspace_ascii);
-            });
-            if (is.read_available())
-            {
-                break;
-            }
-        }
-
-        return is;
+        return {*this};
     }
 
-    export
-    template<class T>
-    bool operator>>(basic_istream<T>& is, T& t)
-    {
-        if (auto val {is.get()})
-        {
-            t = std::move(*val);
-            is.bump();
-            return true;
-        }
+    // export
+    // text_istream& ws(text_istream& is)
+    // {
+    //     while (is.get())
+    //     {
+    //         is.consume([](const auto begin, const auto end) {
+    //             return std::find_if_not(begin, end, isspace_ascii);
+    //         });
+    //         if (is.read_available())
+    //         {
+    //             break;
+    //         }
+    //     }
 
-        return false;
-    }
+    //     return is;
+    // }
 
-    export
-    bool operator>>(text_istream& is, std::string& str)
-    {
-        str.clear();
-        is >> ws;
+    // export
+    // template<class T>
+    // bool operator>>(basic_istream<T>& is, T& t)
+    // {
+    //     if (auto val {is.get()})
+    //     {
+    //         t = std::move(*val);
+    //         is.bump();
+    //         return true;
+    //     }
 
-        while (is.get())
-        {
-            is.consume([&](const auto begin, auto end) {
-                end = std::find_if(begin, end, isspace_ascii);
-                str.append(begin, end);
-                return end;
-            });
+    //     return false;
+    // }
 
-            if (is.read_available())
-            {
-                break;
-            }
-        }
+    // export
+    // bool operator>>(text_istream& is, std::string& str)
+    // {
+    //     str.clear();
+    //     is >> ws;
 
-        return !str.empty();
-    }
+    //     while (is.get())
+    //     {
+    //         is.consume([&](const auto begin, auto end) {
+    //             end = std::find_if(begin, end, isspace_ascii);
+    //             str.append(begin, end);
+    //             return end;
+    //         });
+
+    //         if (is.read_available())
+    //         {
+    //             break;
+    //         }
+    //     }
+
+    //     return !str.empty();
+    // }
 
     export
     bool getline(text_istream& is, std::string& str, const char delim)

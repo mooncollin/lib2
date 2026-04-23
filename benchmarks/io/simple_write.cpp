@@ -98,9 +98,10 @@ public:
 
     void operator()()
     {
-        file.write("Hello World! My name is ");
-        file.write(name());
-        file.put('\n');
+        lib2::text_ostream tfile {file};
+        tfile.write("Hello World! My name is ");
+        tfile.write(name());
+        tfile.put('\n');
     }
 
     void tear_down()
@@ -109,40 +110,7 @@ public:
     }
 private:
     lib2::ofstream file;
-    char buffer[buffer_size];
-};
-
-class lib2_ostream_write final : public lib2::benchmarking::benchmark
-{
-public:
-    lib2_ostream_write()
-        : lib2::benchmarking::benchmark{"lib2_ostream_write"} {}
-
-    void setup()
-    {
-        file.open(name());
-        file.setbuf(buffer, buffer_size);
-    }
-
-    void operator()()
-    {
-        do_(file);
-    }
-
-    void tear_down()
-    {
-        file.close();
-    }
-private:
-    lib2::ofstream file;
-    char buffer[buffer_size];
-
-    void do_(lib2::text_ostream& os)
-    {
-        os.write("Hello World! My name is ");
-        os.write(name());
-        os.put('\n');
-    }
+    std::byte buffer[buffer_size];
 };
 
 class lib2_fstream_fmt final : public lib2::benchmarking::benchmark
@@ -168,7 +136,7 @@ public:
     }
 private:
     lib2::ofstream file;
-    char buffer[buffer_size];
+    std::byte buffer[buffer_size];
 };
 
 class lib2_fstream_rt_fmt final : public lib2::benchmarking::benchmark
@@ -194,7 +162,33 @@ public:
     }
 private:
     lib2::ofstream file;
-    char buffer[buffer_size];
+    std::byte buffer[buffer_size];
+};
+
+class lib2_fstream_vfmt final : public lib2::benchmarking::benchmark
+{
+public:
+    lib2_fstream_vfmt()
+        : lib2::benchmarking::benchmark{"lib2_fstream_vfmt"} {}
+
+    void setup()
+    {
+        file.open(name());
+        file.setbuf(buffer, buffer_size);
+    }
+
+    void operator()()
+    {
+        lib2::vformat_to(file, "Hello World! My name is {}\n", lib2::make_format_args(name()));
+    }
+
+    void tear_down()
+    {
+        file.close();
+    }
+private:
+    lib2::ofstream file;
+    std::byte buffer[buffer_size];
 };
 
 class lib2_async_fstream : public lib2::benchmarking::benchmark
@@ -211,9 +205,7 @@ public:
 
     void operator()() final
     {
-        file.write("Hello World! My name is ");
-        file.write(name());
-        file.put('\n');
+        lib2::format_to<"Hello World! My name is {}\n">(file, name());
     }
 
     void tear_down() final
@@ -233,11 +225,11 @@ int main()
     fstream_print b3;
     lib2_fstream_write b4;
     lib2_fstream_fmt b5;
-    // lib2_async_fstream b6;
+    lib2_async_fstream b6;
     lib2_fstream_rt_fmt b7;
-    lib2_ostream_write b8;
+    lib2_fstream_vfmt b8;
 
     lib2::benchmarking::print_benchmarks(ctx,
-        b1, b2, b3, b4, b5, b7, b8//, b6
+        b1, b2, b3, b4, b5, b6, b7, b8
     );
 }

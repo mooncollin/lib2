@@ -12,8 +12,6 @@ import lib2.strings;
 import lib2.utility;
 import lib2.err;
 
-import :fstream;
-
 namespace lib2
 {
     constexpr std::size_t DWORDS_PER_SIZE_T {(sizeof(std::size_t) * 8 + sizeof(DWORD) * 8 - 1) / (sizeof(DWORD) * 8)};
@@ -28,7 +26,7 @@ namespace lib2
         async_io* next;
         std::size_t capacity;
         OVERLAPPED ov[DWORDS_PER_SIZE_T] {};
-        char buffer[1];
+        std::byte buffer[1];
         
         static async_io* create(const std::size_t buf_size)
         {
@@ -73,7 +71,7 @@ namespace lib2
         }
     }
 
-    static void io_write(const HANDLE handle, const char* data, std::size_t size)
+    static void io_write(const HANDLE handle, const std::byte* data, std::size_t size)
     {
         while (size)
         {
@@ -105,7 +103,7 @@ namespace lib2
             size -= read;
             amount_read += read;
 
-            if (std::char_traits<wchar_t>::find(data - read, read, L'\n'))
+            if (std::find(data - read, data, L'\n'))
             {
                 break;
             }
@@ -114,7 +112,7 @@ namespace lib2
         return amount_read;
     }
 
-    static std::size_t io_read(const HANDLE handle, char* data, std::size_t size)
+    static std::size_t io_read(const HANDLE handle, std::byte* data, std::size_t size)
     {
         std::size_t total_read {0};
         while (size)
@@ -298,7 +296,7 @@ namespace lib2
     {
         if (is_open())
         {
-            if (const auto written {this->amount_written()}; written)
+            if (const auto written {this->amount_written()})
             {
                 io_write(handle, this->pbeg(), written);
                 this->setp(this->pbeg(), this->pend());
@@ -306,7 +304,7 @@ namespace lib2
         }
     }
 
-    void ofstream::write(const char* s, size_type count)
+    void ofstream::write(const std::byte* s, size_type count)
     {
         if (!is_open())
         {
@@ -350,7 +348,7 @@ namespace lib2
         }
     }
 
-    void ofstream::fill(const char& ch, size_type count)
+    void ofstream::fill(const std::byte b, size_type count)
     {
         if (!is_open())
         {
@@ -371,7 +369,7 @@ namespace lib2
                 if (auto amount {this->write_available()}; amount)
                 {
                     amount = std::min(count, amount);
-                    std::fill_n(this->pcur(), amount, ch);
+                    std::fill_n(this->pcur(), amount, b);
                     this->pbump(amount);
                     count -= amount;
                 }
@@ -386,12 +384,12 @@ namespace lib2
         {
             while (count--)
             {
-                io_write(handle, &ch, 1);
+                io_write(handle, &b, 1);
             }
         }
     }
 
-    void ofstream::overflow(const char ch)
+    void ofstream::overflow(const std::byte b)
     {
         if (!is_open())
         {
@@ -410,12 +408,12 @@ namespace lib2
                 flush();
             }
 
-            *this->pcur() = ch;
+            *this->pcur() = b;
             this->pbump(1);
         }
         else
         {
-            io_write(handle, &ch, 1);
+            io_write(handle, &b, 1);
         }
     }
 
@@ -444,7 +442,7 @@ namespace lib2
         io_seek(handle, offset, origin);
     }
 
-    ifstream::size_type ifstream::read(char* s, size_type count)
+    ifstream::size_type ifstream::read(ostream& os, size_type count)
     {
         if (!is_open())
         {
@@ -458,13 +456,12 @@ namespace lib2
 
         std::size_t read_count {0};
 
-        if (const auto avail {this->read_available()}; avail)
+        if (const auto avail {this->read_available()})
         {
             const auto amount {std::min(count, avail)};
-            std::copy_n(this->gcur(), amount, s);
+            os.write(this->gcur(), amount);
             this->gbump(amount);
             count -= amount;
-            s += amount;
             read_count += amount;
         }
 
@@ -472,12 +469,13 @@ namespace lib2
         // just read directly into the user buffer.
         if (count > buf_capacity)
         {
-            read_count += io_read(handle, s, count);
+            // TODO
+            // read_count += io_read(handle, s, count);
         }
         else if (count)
         {
             underflow();
-            std::copy_n(s, count, this->gcur());
+            os.write(this->gcur(), count);
             this->gbump(count);
             read_count += count;
         }
@@ -564,7 +562,7 @@ namespace lib2
         }
     }
 
-    void async_ofstream::write(const char* s, size_type count)
+    void async_ofstream::write(const std::byte* s, size_type count)
     {
         if (!is_open())
         {
@@ -611,7 +609,7 @@ namespace lib2
         }
     }
 
-    void async_ofstream::fill(const char& ch, size_type count)
+    void async_ofstream::fill(const std::byte b, size_type count)
     {
         if (!is_open())
         {
@@ -623,7 +621,7 @@ namespace lib2
         if (this->amount_written())
         {
             const auto amount {std::min(count, this->write_available())};
-            std::fill_n(this->pcur(), amount, ch);
+            std::fill_n(this->pcur(), amount, b);
             this->pbump(amount);
             count -= amount;
             if (count)
@@ -645,19 +643,19 @@ namespace lib2
         if (count != aio.capacity)
         {
             this->setp(aio.buffer, aio.buffer + aio.capacity);
-            std::fill_n(this->pcur(), count, ch);
+            std::fill_n(this->pcur(), count, b);
             this->pbump(count);
         }
         else
         {
-            std::fill_n(aio.buffer, count, ch);
+            std::fill_n(aio.buffer, count, b);
             io_async_add_pending(free_ios, pending_ios);
             io_async_write(handle, aio, aio.capacity, offset);
             offset += aio.capacity;
         }
     }
 
-    void async_ofstream::overflow(const char ch)
+    void async_ofstream::overflow(const std::byte b)
     {
         if (!this->write_available())
         {
@@ -673,23 +671,22 @@ namespace lib2
             this->setp(aio.buffer, aio.buffer + aio.capacity);
         }
         
-        *this->pcur() = ch;
+        *this->pcur() = b;
         this->pbump(1);
     }
 
-    template<class CharT>
-    class bare_out_stream final : public basic_ostream<CharT>
+    class whandle_out_stream final : public ostream
     {
     public:
-        using size_type = typename basic_ostream<CharT>::size_type;
+        using size_type = typename ostream::size_type;
 
-        bare_out_stream(const HANDLE handle) noexcept
+        whandle_out_stream(const HANDLE handle) noexcept
             : handle{handle}
         {
             this->setp(buf, buf + sizeof(buf));
         }
 
-        ~bare_out_stream() noexcept
+        ~whandle_out_stream() noexcept
         {
             try
             {
@@ -702,19 +699,12 @@ namespace lib2
         {
             if (const auto written {this->amount_written()})
             {
-                if constexpr (std::same_as<CharT, wchar_t>)
-                {
-                    io_write_console(handle, this->pbeg(), written);
-                }
-                else
-                {
-                    io_write(handle, this->pbeg(), written);
-                }
+                io_write(handle, this->pbeg(), written);
                 this->setp(buf, buf + sizeof(buf));
             }
         }
 
-        void write(const CharT* s, size_type count) override
+        void write(const std::byte* s, size_type count) override
         {
             // If we have stuff in our buffer, write
             // what we can to that buffer and flush.
@@ -740,19 +730,12 @@ namespace lib2
                 }
                 else
                 {
-                    if constexpr (std::same_as<CharT, wchar_t>)
-                    {
-                        io_write_console(handle, s, count);
-                    }
-                    else
-                    {
-                        io_write(handle, s, count);
-                    }
+                    io_write(handle, s, count);
                 }
             }
         }
 
-        void fill(const CharT& ch, size_type count) override
+        void fill(const std::byte b, size_type count) override
         {
             while (count)
             {
@@ -761,7 +744,7 @@ namespace lib2
                 if (auto amount {this->write_available()})
                 {
                     amount = std::min(count, amount);
-                    std::fill_n(this->pcur(), amount, ch);
+                    std::fill_n(this->pcur(), amount, b);
                     this->pbump(count);
                     count -= amount;
                 }
@@ -773,7 +756,7 @@ namespace lib2
             }
         }
     protected:
-        void overflow(const CharT ch) override
+        void overflow(const std::byte ch) override
         {
             flush();
             *this->pcur() = ch;
@@ -781,49 +764,133 @@ namespace lib2
         }
     private:
         HANDLE handle;
-        CharT buf[4096];
+        std::byte buf[4096];
     };
 
-    class out_console_stream final : public basic_ostream<char>
+    class out_console_stream final : public ostream
     {
     public:
-        using size_type = basic_ostream<char>::size_type;
+        using size_type = ostream::size_type;
 
-        out_console_stream(bare_out_stream<wchar_t>& stream) noexcept
-            : console_stream{stream} {}
+        out_console_stream(const HANDLE handle) noexcept
+            : handle{handle}, cur_{buf}, expand{true} {}
+
+        ~out_console_stream() noexcept
+        {
+            try
+            {
+                flush();
+            }
+            catch (...) {}
+        }
 
         void flush() override
         {
-            console_stream.flush();
+            if (const auto written {cur_ - buf})
+            {
+                io_write_console(handle, buf, written);
+                cur_ = buf;
+            }
         }
 
-        void write(const char* s, const size_type count) override
+        void write(const std::byte* s, const size_type count) override
         {
             bool needs_flushing {false};
-            const auto og_s {s};
-            const auto end {s + count};
-            auto pos {std::find(s, end, '\n')};
-            while (pos != end)
-            {
-                needs_flushing = true;
-                if (pos != og_s)
+
+            const auto emit_wchar {[&](const wchar_t wc) {
+                if (cur_ == std::end(buf))
                 {
-                    if (*(s - 1) == '\r')
-                    {
-                        pos = std::find(pos + 1, end, '\n');
-                        continue;
-                    }
+                    io_write_console(handle, buf, std::size(buf));
+                    cur_ = buf;
+                    needs_flushing = false;
+                }
+                *cur_++ = wc;
+            }};
+
+            const auto write_byte {[&](const auto b) {
+                // Fast path: ASCII
+                if (utf8_len == 0 && b < std::byte{0x80})
+                {
+                    emit_wchar(static_cast<wchar_t>(b));
+                    return;
                 }
 
-                lib2::utf8_to_utf16(s, pos, lib2::ostream_iterator{console_stream});
-                console_stream.write(L"\r\n", 2);
-                s = pos + 1;
-                pos = std::find(s, end, '\n');
-            }
+                // Start of sequence
+                if (utf8_len == 0)
+                {
+                    utf8_buf[0] = static_cast<char8_t>(b);
+                    utf8_len = 1;
 
-            if (s != end)
+                    if ((b & std::byte{0xE0}) == std::byte{0xC0}) utf8_expected = 2;
+                    else if ((b & std::byte{0xF0}) == std::byte{0xE0}) utf8_expected = 3;
+                    else if ((b & std::byte{0xF8}) == std::byte{0xF0}) utf8_expected = 4;
+                    else
+                    {
+                        // invalid start, emit replacement char
+                        utf8_len = 0;
+                        utf8_expected = 0;
+                        emit_wchar(L'?');
+                    }
+                    return;
+                }
+
+                // Continuation byte
+                utf8_buf[utf8_len++] = static_cast<char8_t>(b);
+
+                if (utf8_len < utf8_expected)
+                    return;
+
+                // Decode
+                std::uint32_t cp {0};
+
+                if (utf8_expected == 2)
+                    cp = ((utf8_buf[0] & 0x1F) << 6) |
+                        (utf8_buf[1] & 0x3F);
+                else if (utf8_expected == 3)
+                    cp = ((utf8_buf[0] & 0x0F) << 12) |
+                        ((utf8_buf[1] & 0x3F) << 6) |
+                        (utf8_buf[2] & 0x3F);
+                else
+                    cp = ((utf8_buf[0] & 0x07) << 18) |
+                        ((utf8_buf[1] & 0x3F) << 12) |
+                        ((utf8_buf[2] & 0x3F) << 6) |
+                        (utf8_buf[3] & 0x3F);
+
+                utf8_len = 0;
+                utf8_expected = 0;
+
+                if (cp <= 0xFFFF)
+                {
+                    emit_wchar(static_cast<wchar_t>(cp));
+                }
+                else
+                {
+                    cp -= 0x10000;
+                    emit_wchar(static_cast<wchar_t>(0xD800 + (cp >> 10)));
+                    emit_wchar(static_cast<wchar_t>(0xDC00 + (cp & 0x3FF)));
+                }
+            }};
+
+            const auto end {s + count};
+            for (; s != end; ++s)
             {
-                lib2::utf8_to_utf16(s, end, lib2::ostream_iterator{console_stream});
+                if (*s == std::byte{'\r'})
+                {
+                    expand = false;
+                }
+                else if (*s == std::byte{'\n'})
+                {
+                    if (expand)
+                    {
+                        write_byte(std::byte{'\r'});
+                    }
+                    else
+                    {
+                        expand = true;
+                    }
+                    needs_flushing = true;
+                }
+                write_byte(*s);
             }
 
             if (needs_flushing)
@@ -832,57 +899,113 @@ namespace lib2
             }
         }
 
-        void fill(const char& ch, size_type count) override
+        void fill(const std::byte b, size_type count) override
         {
-            if (ch == '\n')
+            bool needs_flushing {false};
+            const auto emit_wchar {[&](const wchar_t wc) {
+                if (cur_ == std::end(buf))
+                {
+                    io_write_console(handle, buf, std::size(buf));
+                    cur_ = buf;
+                    needs_flushing = false;
+                }
+                *cur_++ = wc;
+            }};
+
+            // Resolve any expands
+            if (count)
+            {
+                if (b == std::byte{'\r'})
+                {
+                    expand = false;
+                }
+                else if (b == std::byte{'\n'})
+                {
+                    if (expand)
+                    {
+                        emit_wchar(L'\r');
+                    }
+                    else
+                    {
+                        expand = true;
+                    }
+                    needs_flushing = true;
+                }
+
+                emit_wchar(static_cast<wchar_t>(b));
+                --count;
+            }
+
+            if (b == std::byte{'\n'})
             {
                 while (count--)
                 {
-                    console_stream.write(L"\r\n", 2);
+                    emit_wchar(L'\r');
+                    emit_wchar(L'\n');
                 }
-                flush();
             }
             else
             {
-                console_stream.fill(ch, count);
+                do
+                {
+                    if (cur_ == std::end(buf))
+                    {
+                        io_write_console(handle, buf, std::size(buf));
+                        cur_ = buf;
+                        needs_flushing = false;
+                    }
+
+                    if (const auto avail {std::min(count, static_cast<std::size_t>(std::end(buf) - cur_))})
+                    {
+                        cur_ = std::fill_n(cur_, avail, static_cast<wchar_t>(b));
+                        count -= avail;
+                    }
+
+                    if (count)
+                    {
+                        io_write_console(handle, buf, std::size(buf));
+                        cur_ = buf;
+                    }
+                }
+                while (count);
             }
+
+            utf8_len = 0;
+            utf8_expected = 0;
         }
     protected:
-        void overflow(const char ch) override
+        void overflow(const std::byte b) override
         {
-            if (ch == '\n')
-            {
-                console_stream.write(L"\r\n", 2);
-                flush();
-            }
-            else
-            {
-                console_stream.put(ch);
-            }
+            write(&b, 1);
         }
     private:
-        bare_out_stream<wchar_t>& console_stream;
+        HANDLE handle;
+        wchar_t buf[4096];
+        wchar_t* cur_;
+        bool expand;
+
+        char8_t utf8_buf[4];
+        int utf8_len {0};
+        int utf8_expected {0};
     };
 
-    template<class CharT>
-    class bare_in_stream final : public basic_istream<CharT>
+    class whandle_in_stream final : public istream
     {
     public:
-        using opt_type = typename basic_istream<CharT>::opt_type;
+        using opt_type = typename istream::opt_type;
 
-        bare_in_stream(const HANDLE handle) noexcept
+        whandle_in_stream(const HANDLE handle) noexcept
             : handle{handle} {}
 
-        std::size_t read(CharT* s, std::size_t count) override
+        std::size_t read(ostream& os, std::size_t count) override
         {
             std::size_t read_count {std::min(count, this->read_available())};
 
             if (read_count)
             {
-                std::copy_n(this->gcur(), read_count, s);
+                os.write(this->gcur(), read_count);
                 this->gbump(read_count);
                 count -= read_count;
-                s += read_count;
             }
 
             // If the request is larger than our buffer capacity,
@@ -892,19 +1015,13 @@ namespace lib2
             {
                 if (count >= sizeof(buf))
                 {
-                    if constexpr (std::same_as<CharT, wchar_t>)
-                    {
-                        read_count += io_read_console(handle, s, count);
-                    }
-                    else
-                    {
-                        read_count += io_read(handle, s, count);
-                    }
+                    // TODO
+                    // read_count += io_read(handle, s, count);
                 }
                 else
                 {
                     underflow();
-                    std::copy_n(this->gcur(), count, s);
+                    os.write(this->gcur(), count);
                     this->gbump(count);
                     read_count += count;
                 }
@@ -915,16 +1032,7 @@ namespace lib2
     protected:
         opt_type underflow() override
         {
-            const auto amount {[this] {
-                if constexpr (std::same_as<CharT, wchar_t>)
-                {
-                    return io_read_console(handle, buf, std::size(buf));
-                }
-                else
-                {
-                    return io_read(handle, buf, std::size(buf));
-                }
-            }()};
+            const auto amount {io_read(handle, buf, std::size(buf))};
 
             if (amount)
             {
@@ -935,95 +1043,146 @@ namespace lib2
             return {};
         }
     private:
-        CharT buf[4096];
+        std::byte buf[4096];
         HANDLE handle;
     };
 
-    class in_console_stream final : public basic_istream<char>
+    class in_console_stream final : public istream
     {
     public:
-        using opt_type  = typename basic_istream<char>::opt_type;
-        using size_type = typename basic_istream<char>::size_type;
+        using opt_type  = istream::opt_type;
+        using size_type = istream::size_type;
 
-        in_console_stream(bare_in_stream<wchar_t>& stream) noexcept
-            : console_stream{stream}
-        {
-            this->setg(buf, buf, buf);
-        }
+        in_console_stream(const HANDLE handle) noexcept
+            : handle{handle}, cur{buf}, end{buf} {}
 
-        size_type read(char* s, size_type count) override
+        size_type read(ostream& os, size_type count) override
         {
-            const auto save {count};
-            while (count)
+            size_type written {0};
+
+            while (written < count)
             {
-                if (const auto avail {this->read_available()})
+                // 1. Drain leftover UTF-8
+                while (utf8_cur < utf8_len && written < count)
                 {
-                    const auto amount {std::min(count, avail)};
-                    s = std::copy_n(this->gcur(), amount, s);
-                    this->gbump(amount);
-                    count -= amount;
+                    os.put(std::byte{static_cast<unsigned char>(utf8_buf[utf8_cur++])});
+                    ++written;
                 }
-                else if (const auto possible_code_points {count / 4})
+
+                if (written == count)
+                    break;
+
+                utf8_cur = 0;
+                utf8_len = 0;
+
+                // 2. Need more UTF-16
+                if (cur == end)
                 {
-                    const auto limited_view {std::ranges::views::take(console_stream, possible_code_points)};
-                    const auto og_s {s};
-                    s = utf16_to_utf8(limited_view.begin(), limited_view.end(), s).out;
-                    count -= s - og_s;
+                    const auto amount {io_read_console(handle, buf, std::size(buf))};
+                    if (!amount)
+                        break;
+
+                    cur = buf;
+                    end = buf + amount;
+                }
+
+                // 3. Decode one code point
+                std::uint32_t cp {0};
+                const auto wc {*cur++};
+
+                if (pending_high)
+                {
+                    if (wc >= 0xDC00 && wc <= 0xDFFF)
+                    {
+                        cp = 0x10000 + (((pending_high - 0xD800) << 10) |
+                                        (wc - 0xDC00));
+                        pending_high = 0;
+                    }
+                    else
+                    {
+                        cp = 0xFFFD;
+                        pending_high = 0;
+                        --cur;
+                    }
+                }
+                else if (wc >= 0xD800 && wc <= 0xDBFF)
+                {
+                    pending_high = wc;
+                    continue;
+                }
+                else if (wc >= 0xDC00 && wc <= 0xDFFF)
+                {
+                    cp = 0xFFFD;
                 }
                 else
                 {
-                    underflow();
+                    cp = wc;
+                }
+
+                // 4. Encode into utf8_buf
+                if (cp <= 0x7F)
+                {
+                    utf8_buf[0] = static_cast<char>(cp);
+                    utf8_len = 1;
+                }
+                else if (cp <= 0x7FF)
+                {
+                    utf8_buf[0] = static_cast<char>(0xC0 | (cp >> 6));
+                    utf8_buf[1] = static_cast<char>(0x80 | (cp & 0x3F));
+                    utf8_len = 2;
+                }
+                else if (cp <= 0xFFFF)
+                {
+                    utf8_buf[0] = static_cast<char>(0xE0 | (cp >> 12));
+                    utf8_buf[1] = static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+                    utf8_buf[2] = static_cast<char>(0x80 | (cp & 0x3F));
+                    utf8_len = 3;
+                }
+                else
+                {
+                    utf8_buf[0] = static_cast<char>(0xF0 | (cp >> 18));
+                    utf8_buf[1] = static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+                    utf8_buf[2] = static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+                    utf8_buf[3] = static_cast<char>(0x80 | (cp & 0x3F));
+                    utf8_len = 4;
                 }
             }
 
-            return save - count;
+            return written;
         }
     protected:
         opt_type underflow() override
         {
-            auto ch {console_stream.bump()};
-            if (!ch)
+            std::byte cb[1];
+            ospanstream ss {cb};
+            if (read(ss, 1))
             {
-                return {};
+                return cb[0];
             }
-
-            auto wch {*ch};
-
-            if (wch == L'\r' && (ch = console_stream.bump()))
-            {
-                wch = *ch;
-                if (wch == L'\n')
-                {
-                    buf[0] = '\n';
-                    this->setg(buf, buf, buf + 1);
-                }
-                else
-                {
-                    buf[0] = '\r';
-                    const auto result {utf16_to_utf8(&wch, &wch + 1, buf + 1)};
-                    this->setg(buf, buf, result.out);
-                }
-            }
-            else
-            {
-                const auto result {utf16_to_utf8(&wch, &wch + 1, buf)};
-                this->setg(buf, buf, result.out);
-            }
-            return buf[0];
+            
+            return {};
         }
     private:
-        char buf[8];
-        bare_in_stream<wchar_t>& console_stream;
+        HANDLE handle;
+        wchar_t buf[4096];
+        wchar_t* cur;
+        wchar_t* end;
+
+        char8_t utf8_buf[8];
+        std::size_t utf8_cur {0};
+        std::size_t utf8_len {0};
+
+        wchar_t pending_high {0};
     };
 
     // For when GetStdHandle gives NULL or an invalid handle
-    class null_stdostream final : public basic_ostream<char>
+    class null_stdostream final : public ostream
     {
     public:
         null_stdostream(std::error_code ec) noexcept
             : ec{std::move(ec)} {}
     protected:
-        void overflow(const char) override
+        void overflow(const std::byte) override
         {
             throw std::system_error{ec};
         }
@@ -1031,10 +1190,10 @@ namespace lib2
         std::error_code ec;
     };
 
-    class null_stdistream final : public basic_istream<char>
+    class null_stdistream final : public istream
     {
     public:
-        using opt_type = basic_istream<char>::opt_type;
+        using opt_type = istream::opt_type;
 
         null_stdistream(std::error_code ec) noexcept
             : ec{std::move(ec)} {}
@@ -1047,12 +1206,11 @@ namespace lib2
         std::error_code ec;
     };
 
-    io_init::io_init() noexcept
+    text_ostream init_cout() noexcept
     {
         std::error_code err;
         
         const auto out_handle {GetStdHandle(STD_OUTPUT_HANDLE)};
-
         if (!out_handle)
         {
             err = std::make_error_code(std::errc::no_such_device);
@@ -1066,21 +1224,23 @@ namespace lib2
         if (err)
         {
             static null_stdostream null_cout {err};
-            cout_  = &null_cout;
-        }
-        else if (is_console(out_handle))
-        {
-            static bare_out_stream<wchar_t> true_cout {out_handle};
-            static out_console_stream c_cout {true_cout};
-            cout_ = &c_cout;
-        }
-        else
-        {
-            static bare_out_stream<char> f_cout {out_handle};
-            cout_ = &f_cout;
+            return null_cout;
         }
         
-        err = {};
+        if (is_console(out_handle))
+        {
+            static out_console_stream c_cout {out_handle};
+            return c_cout;
+        }
+
+        static whandle_out_stream f_cout {out_handle};
+        return f_cout;
+    }
+
+    text_ostream init_cerr() noexcept
+    {
+        std::error_code err;
+
         const auto err_handle {GetStdHandle(STD_ERROR_HANDLE)};
 
         if (!err_handle)
@@ -1096,21 +1256,23 @@ namespace lib2
         if (err)
         {
             static null_stdostream null_cerr {err};
-            cerr_ = &null_cerr;
+            return null_cerr;
         }
-        else if (is_console(err_handle))
+        
+        if (is_console(err_handle))
         {
-            static bare_out_stream<wchar_t> true_cerr {err_handle};
-            static out_console_stream c_cerr {true_cerr};
-            cerr_ = &c_cerr;
-        }
-        else
-        {
-            static bare_out_stream<char> f_cerr {err_handle};
-            cerr_ = &f_cerr;
+            static out_console_stream c_cerr {err_handle};
+            return c_cerr;
         }
 
-        err = {};
+        static whandle_out_stream f_cerr {err_handle};
+        return f_cerr;
+    }
+
+    text_istream init_cin() noexcept
+    {
+        std::error_code err;
+
         const auto in_handle {GetStdHandle(STD_INPUT_HANDLE)};
 
         if (!in_handle)
@@ -1126,18 +1288,16 @@ namespace lib2
         if (err)
         {
             static null_stdistream null_cin {err};
-            cin_  = &null_cin;
+            return null_cin;
         }
-        else if (is_console(in_handle))
+       
+        if (is_console(in_handle))
         {
-            static bare_in_stream<wchar_t> true_in {in_handle};
-            static in_console_stream c_cin {true_in};
-            cin_  = &c_cin;
+            static in_console_stream c_cin {in_handle};
+            return c_cin;
         }
-        else
-        {
-            static bare_in_stream<char> f_cin {in_handle};
-            cin_  = &f_cin;
-        }
+
+        static whandle_in_stream f_cin {in_handle};
+        return f_cin;
     }
 }

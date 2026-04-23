@@ -4,14 +4,6 @@ import std;
 
 import lib2.utility;
 
-import :formatter;
-import :format;
-import :parsers;
-import :context;
-import :arithmetic;
-import :string;
-import :misc;
-
 namespace lib2
 {
     struct runtime_collector
@@ -45,7 +37,7 @@ namespace lib2
         }
     };
 
-    text_ostream& vformat_to(text_ostream& os, const std::string_view fmt, const format_args args)
+    text_ostream vformat_to(text_ostream os, const std::string_view fmt, const format_args args)
     {
         runtime_collector collector {.fmt_ctx={os, args}};
         format_parse_context parse_ctx {fmt, args.size()};
@@ -53,7 +45,7 @@ namespace lib2
         return os;
     }
 
-    text_ostream& vformat_to(const std::locale& loc, text_ostream& os, const std::string_view fmt, const format_args args)
+    text_ostream vformat_to(const std::locale& loc, text_ostream os, const std::string_view fmt, const format_args args)
     {
         runtime_collector collector {.fmt_ctx={loc, os, args}};
         format_parse_context parse_ctx {fmt, args.size()};

@@ -8,20 +8,17 @@ import std;
 
 import lib2.strings;
 
-import :character;
-
 namespace lib2
 {
     export
-    template<class T>
-    class basic_ostream
+    class ostream
     {
     public:
-        using value_type = T;
+        using value_type = std::byte;
         using size_type  = std::size_t;
         using ssize_type = std::ptrdiff_t;
 
-        constexpr virtual ~basic_ostream() noexcept = default;
+        constexpr virtual ~ostream() noexcept = default;
 
         [[nodiscard]] constexpr size_type write_available() const noexcept
         {
@@ -33,29 +30,19 @@ namespace lib2
             return static_cast<size_type>(pcur_ - pbeg_);
         }
 
-        constexpr void put(T val)
+        constexpr void put(const std::byte val)
         {
             if (write_available())
             {
-                *pcur_++ = std::move(val);
+                *pcur_++ = val;
             }
             else
             {
-                overflow(std::move(val));
+                overflow(val);
             }
         }
 
-        template<class F>
-            requires(std::is_invocable_r_v<T*, F, T*, T*>)
-        constexpr size_type produce(F&& f)
-        {
-            const auto new_cur {std::invoke(std::forward<F>(f), pcur_, pend_)};
-            const auto amount {static_cast<size_type>(new_cur - pcur_)};
-            pcur_ = new_cur;
-            return amount;
-        }
-
-        virtual constexpr void write(const T* vals, size_type count)
+        virtual constexpr void write(const std::byte* vals, size_type count)
         {
             while (count)
             {
@@ -74,25 +61,7 @@ namespace lib2
             }
         }
 
-        template<std::ranges::contiguous_range R>
-            requires(std::same_as<std::ranges::range_value_t<R>, T>)
-        void write(R&& r)
-        {
-            write(std::ranges::data(r), std::ranges::size(r));
-        }
-
-        template<std::size_t N>
-        void write(const T(&str)[N]) requires(std::same_as<T, char>)
-        {
-            write(str, N - 1);
-        }
-
-        void write(const std::string_view str) requires(std::same_as<T, char>)
-        {
-            write(str.data(), str.size());
-        }
-
-        virtual constexpr void fill(const T& val, size_type count)
+        virtual constexpr void fill(const std::byte val, size_type count)
         {
             while (count)
             {
@@ -110,25 +79,33 @@ namespace lib2
         }
 
         virtual constexpr void flush() {}
+
+        template<class F>
+            requires(std::is_invocable_r_v<std::byte*, F, std::byte*, std::byte*>)
+        constexpr size_type produce(F&& f) noexcept(std::is_nothrow_invocable_v<F, std::byte*, std::byte*>)
+        {
+            const auto old_pcur {std::exchange(pcur_, std::invoke(std::forward<F>(f), pcur_, pend_))};
+            return static_cast<size_type>(pcur_ - old_pcur);
+        }
     protected:
-        constexpr basic_ostream() noexcept
+        constexpr ostream() noexcept
             : pbeg_{nullptr}
             , pcur_{nullptr}
             , pend_{nullptr} {}
 
-        constexpr basic_ostream(const basic_ostream&) noexcept = default;
+        constexpr ostream(const ostream&) noexcept = default;
 
-        [[nodiscard]] constexpr T* pbeg() const noexcept
+        [[nodiscard]] constexpr std::byte* pbeg() const noexcept
         {
             return pbeg_;
         }
 
-        [[nodiscard]] constexpr T* pcur() const noexcept
+        [[nodiscard]] constexpr std::byte* pcur() const noexcept
         {
             return pcur_;
         }
 
-        [[nodiscard]] constexpr T* pend() const noexcept
+        [[nodiscard]] constexpr std::byte* pend() const noexcept
         {
             return pend_;
         }
@@ -140,11 +117,10 @@ namespace lib2
 
         constexpr void pbump(const ssize_type count) noexcept
         {
-            assert(write_available() >= count);
             pcur_ += count;
         }
 
-        constexpr void setp(T* const pb, T* const pe) noexcept
+        constexpr void setp(std::byte* const pb, std::byte* const pe) noexcept
         {
             assert(pe >= pb);
             pbeg_ = pb;
@@ -152,31 +128,24 @@ namespace lib2
             pend_ = pe;
         }
 
-        constexpr void swap(basic_ostream& other) noexcept
+        constexpr void swap(ostream& other) noexcept
         {
             std::swap(pbeg_, other.pbeg_);
             std::swap(pcur_, other.pcur_);
             std::swap(pend_, other.pend_);
         }
 
-        virtual constexpr void overflow(T val)
+        virtual void overflow(std::byte)
         {
             throw std::logic_error{"Overflow not supported"};
         }
     private:
-        T* pbeg_;
-        T* pcur_;
-        T* pend_;
+        std::byte* pbeg_;
+        std::byte* pcur_;
+        std::byte* pend_;
     };
 
     export
-    using byte_ostream = basic_ostream<std::byte>;
-
-    export
-    using text_ostream = basic_ostream<char>;
-
-    export
-    template<class T>
     class ostream_iterator
     {
     public:
@@ -186,12 +155,12 @@ namespace lib2
         using pointer = void;
         using reference = void;
 
-        constexpr ostream_iterator(basic_ostream<T>& s) noexcept
+        constexpr ostream_iterator(ostream& s) noexcept
             : stream_{std::addressof(s)} {}
 
-        ostream_iterator& operator=(T value)
+        ostream_iterator& operator=(const std::byte value)
         {
-            stream_->put(std::move(value));
+            stream_->put(value);
             return *this;
         }
 
@@ -210,22 +179,21 @@ namespace lib2
             return *this;
         }
 
-        [[nodiscard]] basic_ostream<T>& stream() noexcept
+        [[nodiscard]] ostream& stream() noexcept
         {
             return *stream_;
         }
     private:
-        basic_ostream<T>* stream_;
+        ostream* stream_;
     };
 
     export
-    template<class T>
-    class size_ostream final : public basic_ostream<T>
+    class size_ostream final : public ostream
     {
     public:
-        using value_type = typename basic_ostream<T>::value_type;
-        using size_type  = typename basic_ostream<T>::size_type;
-        using ssize_type = typename basic_ostream<T>::ssize_type;
+        using value_type = ostream::value_type;
+        using size_type  = ostream::size_type;
+        using ssize_type = ostream::ssize_type;
 
         constexpr size_ostream() noexcept
             : size_{0} {}
@@ -235,21 +203,96 @@ namespace lib2
             return size_;
         }
 
-        constexpr void write(const T* const, const size_type count) noexcept override
+        constexpr void write(const std::byte* const, const size_type count) noexcept override
         {
             size_ += count;
         }
 
-        constexpr void fill(const T&, const size_type count) noexcept override
+        constexpr void fill(const std::byte, const size_type count) noexcept override
         {
             size_ += count;
         }
     protected:
-        constexpr void overflow(const T) override
+        constexpr void overflow(const std::byte) override
         {
             ++size_;
         }
     private:
         std::size_t size_;
+    };
+
+    export
+    struct text_ostream
+    {
+        ostream& stream;
+
+        constexpr text_ostream(ostream& stream) noexcept
+            : stream{stream} {}
+
+        constexpr inline void put(const char ch)
+        {
+            stream.put(std::byte(ch));
+        }
+
+        constexpr inline void write(const char* const data, const ostream::size_type count)
+        {
+            stream.write(reinterpret_cast<const std::byte*>(data), count);
+        }
+
+        constexpr inline void write(const std::string_view str)
+        {
+            write(str.data(), str.size());
+        }
+
+        constexpr inline void fill(const char ch, const ostream::size_type count)
+        {
+            stream.fill(std::byte(ch), count);
+        }
+
+        template<class F>
+            requires(std::is_invocable_r_v<char*, F, char*, char*>)
+        constexpr inline ostream::size_type produce(F&& f) noexcept(std::is_nothrow_invocable_v<F, char*, char*>)
+        {
+            return stream.produce([&](const auto beg, const auto end) {
+                return reinterpret_cast<char*>(std::invoke(std::forward<F>(f), reinterpret_cast<char*>(beg), reinterpret_cast<char*>(end)));
+            });
+        }
+    };
+
+    export
+    class text_ostream_iterator
+    {
+    public:
+        using iterator_category = std::output_iterator_tag;
+        using value_type = void;
+        using difference_type = std::ptrdiff_t;
+        using pointer = void;
+        using reference = void;
+
+        constexpr text_ostream_iterator(text_ostream s) noexcept
+            : stream_{&(s.stream)} {}
+
+        text_ostream_iterator& operator=(const char value)
+        {
+            stream_->put(std::byte(value));
+            return *this;
+        }
+
+        text_ostream_iterator& operator*() noexcept
+        {
+            return *this;
+        }
+
+        text_ostream_iterator& operator++() noexcept
+        {
+            return *this;
+        }
+
+        text_ostream_iterator& operator++(int) noexcept
+        {
+            return *this;
+        }
+    private:
+        ostream* stream_;
     };
 }

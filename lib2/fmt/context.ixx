@@ -109,13 +109,13 @@ namespace lib2
     public:
         format_context& operator=(const format_context&) = delete;
         
-        format_context(text_ostream& os, const format_args args = {}) noexcept
+        format_context(text_ostream os, const format_args args = {}) noexcept
             : stream{os}, args{args}, loc{nullptr} {}
 
-        format_context(const std::locale& loc, text_ostream& os, const format_args args = {}) noexcept
+        format_context(const std::locale& loc, text_ostream os, const format_args args = {}) noexcept
             : stream{os}, args{args}, loc{std::addressof(loc)} {}
 
-        format_context(const format_context& other, text_ostream& os) noexcept
+        format_context(const format_context& other, text_ostream os) noexcept
             : stream{os}, args{other.args}, loc{other.loc} {}
 
         [[nodiscard]] std::locale locale() const noexcept
@@ -128,7 +128,7 @@ namespace lib2
             return {};
         }
 
-        text_ostream& stream;
+        text_ostream stream;
         const format_args args;
     private:
         const std::locale* const loc;
@@ -200,7 +200,7 @@ namespace lib2
             void(*func)(format_parse_context&, format_context&, const void*);
         };
 
-        enum class arg_type
+        enum class arg_type : std::uint8_t
         {
             none,
             boolean,
@@ -284,6 +284,38 @@ namespace lib2
 
         format_arg() noexcept
             : type{arg_type::none} {}
+
+        format_arg(const format_arg& other) noexcept
+            : type{other.type}
+        {
+            switch (type)
+            {
+            case arg_type::boolean:
+                std::construct_at(&b, other.b);
+                break;
+            case arg_type::character:
+                std::construct_at(&c, other.c);
+                break;
+            case arg_type::signed_integer:
+                std::construct_at(&si, other.si);
+                break;
+            case arg_type::unsigned_integer:
+                std::construct_at(&ui, other.ui);
+                break;
+            case arg_type::floating:
+                std::construct_at(&f, other.f);
+                break;
+            case arg_type::string:
+                std::construct_at(&s, other.s);
+                break;
+            case arg_type::pointer:
+                std::construct_at(&p, other.p);
+                break;
+            case arg_type::custom:
+                std::construct_at(&h, other.h);
+                break;
+            }
+        }
 
         [[nodiscard]] constexpr explicit operator bool() const noexcept
         {
@@ -373,7 +405,7 @@ namespace lib2
             : type{arg_type::pointer}, p{val} {}
 
         template<class T>
-            requires(!std::same_as<T, bool> && !std::same_as<T, char> && !std::integral<T> && !std::floating_point<T> && !std::same_as<T, std::string_view> && !std::same_as<std::remove_cvref_t<T>, void*> && !std::same_as<std::remove_cvref_t<T>, char*>)
+            requires(!std::same_as<T, bool> && !std::same_as<T, char> && !std::integral<T> && !std::floating_point<T> && !std::same_as<T, std::string_view> && !std::same_as<std::remove_cvref_t<T>, void*> && !std::same_as<std::remove_cvref_t<T>, char*> && !std::same_as<T, format_arg>)
         constexpr format_arg(const T& val) noexcept
             : type{arg_type::custom}, h{val} {}
 

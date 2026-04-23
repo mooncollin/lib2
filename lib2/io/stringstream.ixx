@@ -7,19 +7,20 @@ import lib2.strings;
 import :ostream;
 import :istream;
 import :iostream;
+import :spanstream;
 
 namespace lib2
 {
     export
-    template<character CharT, class Traits = std::char_traits<CharT>, class Allocator = std::allocator<CharT>>
-    class basic_istringstream : public basic_istream<CharT>
+    template<class Allocator = std::allocator<char>>
+    class basic_istringstream : public istream
     {
     public:
-        using value_type     = typename basic_istream<CharT>::value_type;
-        using size_type      = typename basic_istream<CharT>::size_type;
-        using ssize_type     = typename basic_istream<CharT>::ssize_type;
-        using char_type      = CharT;
-        using traits_type    = Traits;
+        using value_type     = istream::value_type;
+        using size_type      = istream::size_type;
+        using ssize_type     = istream::ssize_type;
+        using char_type      = char;
+        using traits_type    = std::char_traits<char>;
         using pos_type       = typename traits_type::pos_type;
         using off_type       = typename traits_type::off_type;
         using allocator_type = Allocator;
@@ -29,13 +30,13 @@ namespace lib2
             init_buf_ptrs();
         }
 
-        constexpr explicit basic_istringstream(const std::basic_string<CharT, Traits, Allocator>& s)
+        constexpr explicit basic_istringstream(const std::basic_string<char_type, traits_type, Allocator>& s)
             : buf{s}
         {
             init_buf_ptrs();
         }
 
-        constexpr explicit basic_istringstream(std::basic_string<CharT, Traits, Allocator>&& s) noexcept
+        constexpr explicit basic_istringstream(std::basic_string<char_type, traits_type, Allocator>&& s) noexcept
             : buf{std::move(s)}
         {
             init_buf_ptrs();
@@ -48,27 +49,27 @@ namespace lib2
         }
 
         template<class SAlloc>
-        constexpr explicit basic_istringstream(const std::basic_string<CharT, Traits, SAlloc>& s)
+        constexpr explicit basic_istringstream(const std::basic_string<char_type, traits_type, SAlloc>& s)
             : buf{s.begin(), s.end()}
         {
             init_buf_ptrs();
         }
 
         template<class SAlloc>
-        constexpr basic_istringstream(const std::basic_string<CharT, Traits, SAlloc>& s, const Allocator& a)
+        constexpr basic_istringstream(const std::basic_string<char_type, traits_type, SAlloc>& s, const Allocator& a)
             : buf{s.begin(), s.end(), a}
         {
             init_buf_ptrs();
         }
 
-        template<std::convertible_to<std::basic_string_view<CharT, Traits>> StringViewLike>
+        template<std::convertible_to<std::string_view> StringViewLike>
         constexpr explicit basic_istringstream(const StringViewLike& sv)
             : buf{sv}
         {
             init_buf_ptrs();
         }
 
-        template<std::convertible_to<std::basic_string_view<CharT, Traits>> StringViewLike>
+        template<std::convertible_to<std::string_view> StringViewLike>
         constexpr basic_istringstream(const StringViewLike& sv, const Allocator& a)
             : buf{sv, a}
         {
@@ -93,23 +94,23 @@ namespace lib2
 
         constexpr basic_istringstream(const basic_istringstream&) = delete;
 
-        constexpr std::basic_string_view<CharT, Traits> view() const noexcept
+        [[nodiscard]] constexpr std::string_view view() const noexcept
         {
             return buf;
         }
 
-        constexpr std::basic_string<CharT, Traits, Allocator> str() const&
+        constexpr std::basic_string<char_type, traits_type, Allocator> str() const&
         {
             return buf;
         }
 
         template<class SAlloc>
-        constexpr std::basic_string<CharT, Traits, SAlloc> str(const SAlloc& a) const
+        constexpr std::basic_string<char_type, traits_type, SAlloc> str(const SAlloc& a) const
         {
             return {buf, a};
         }
 
-        constexpr std::basic_string<CharT, Traits, Allocator> str() && noexcept
+        constexpr std::basic_string<char_type, traits_type, Allocator> str() && noexcept
         {
             auto temp {std::move(buf)};
             buf.clear();
@@ -118,50 +119,101 @@ namespace lib2
             return std::move(temp);
         }
 
-        constexpr void str(const std::basic_string<CharT, Traits, Allocator>& s)
+        constexpr void str(const std::basic_string<char_type, traits_type, Allocator>& s)
         {
             buf = s;
             init_buf_ptrs();
         }
 
         template<class SAlloc>
-        constexpr void str(const std::basic_string<CharT, Traits, SAlloc>& s)
+        constexpr void str(const std::basic_string<char_type, traits_type, SAlloc>& s)
         {
             buf.assign(s.begin(), s.end());
             init_buf_ptrs();
         }
 
-        constexpr void str(std::basic_string<CharT, Traits, Allocator>&& s) noexcept
+        constexpr void str(std::basic_string<char_type, traits_type, Allocator>&& s) noexcept
         {
             buf = std::move(s);
             init_buf_ptrs();
         }
 
-        template<std::convertible_to<std::basic_string_view<CharT, Traits>> StringViewLike>
+        template<std::convertible_to<std::string_view> StringViewLike>
         constexpr void str(const StringViewLike& t)
         {
             buf = t;
             init_buf_ptrs();
         }
+
+        constexpr inline opt_char get()
+        {
+            return istream::get();
+        }
+
+        constexpr inline opt_char bump()
+        {
+            return istream::bump();
+        }
+
+        constexpr inline opt_char next()
+        {
+            return istream::next();
+        }
+
+        constexpr inline size_type read(text_ostream os, const size_type count)
+        {
+            return istream::read(os.stream, count);
+        }
+
+        constexpr inline size_type read(text_ostream os, const size_type count, const char delim)
+        {
+            return istream::read(os.stream, count, std::byte(delim));
+        }
+
+        size_type read(char* const buf, const size_type count)
+        {
+            ospanstream ss {{reinterpret_cast<std::byte*>(buf), count}};
+            return read(ss, count);
+        }
+
+        size_type read(char* const buf, const size_type count, const char delim)
+        {
+            ospanstream ss {{reinterpret_cast<std::byte*>(buf), count}};
+            return read(ss, count, delim);
+        }
+
+        constexpr inline istream::size_type ignore(const istream::size_type count, const char delim)
+        {
+            return istream::ignore(count, std::byte(delim));
+        }
+
+        template<class F>
+            requires(std::is_invocable_r_v<const char*, F, const char*, const char*>)
+        constexpr inline istream::size_type consume(F&& f) noexcept(std::is_nothrow_invocable_v<F, const char*, const char*>)
+        {
+            return istream::consume([&](const auto beg, const auto end) {
+                return reinterpret_cast<const std::byte*>(std::invoke(std::forward<F>(f), reinterpret_cast<const char*>(beg), reinterpret_cast<const char*>(end)));
+            });
+        }
     private:
-        std::basic_string<CharT, Traits, Allocator> buf;
+        std::basic_string<char_type, traits_type, Allocator> buf;
 
         constexpr void init_buf_ptrs() noexcept
         {
-            this->setg(buf.data(), buf.data(), buf.data() + buf.size());
+            this->setg(reinterpret_cast<std::byte*>(buf.data()), reinterpret_cast<std::byte*>(buf.data()), reinterpret_cast<std::byte*>(buf.data() + buf.size()));
         }
     };
 
     export
-    template<character CharT, class Traits = std::char_traits<CharT>, class Allocator = std::allocator<CharT>>
-    class basic_ostringstream : public basic_ostream<CharT>
+    template<class Allocator = std::allocator<char>>
+    class basic_ostringstream : public ostream
     {
     public:
-        using value_type     = typename basic_istream<CharT>::value_type;
-        using size_type      = typename basic_istream<CharT>::size_type;
-        using ssize_type     = typename basic_istream<CharT>::ssize_type;
-        using char_type      = CharT;
-        using traits_type    = Traits;
+        using value_type     = ostream::value_type;
+        using size_type      = ostream::size_type;
+        using ssize_type     = ostream::ssize_type;
+        using char_type      = char;
+        using traits_type    = std::char_traits<char>;
         using pos_type       = typename traits_type::pos_type;
         using off_type       = typename traits_type::off_type;
         using allocator_type = Allocator;
@@ -171,13 +223,13 @@ namespace lib2
             init_buf_ptrs();
         }
 
-        constexpr explicit basic_ostringstream(const std::basic_string<CharT, Traits, Allocator>& s)
+        constexpr explicit basic_ostringstream(const std::basic_string<char_type, traits_type, Allocator>& s)
             : buf{s}
         {
             init_buf_ptrs();
         }
 
-        constexpr explicit basic_ostringstream(std::basic_string<CharT, Traits, Allocator>&& s) noexcept
+        constexpr explicit basic_ostringstream(std::basic_string<char_type, traits_type, Allocator>&& s) noexcept
             : buf{std::move(s)}
         {
             init_buf_ptrs();
@@ -190,27 +242,27 @@ namespace lib2
         }
 
         template<class SAlloc>
-        constexpr explicit basic_ostringstream(const std::basic_string<CharT, Traits, SAlloc>& s)
+        constexpr explicit basic_ostringstream(const std::basic_string<char_type, traits_type, SAlloc>& s)
             : buf{s.begin(), s.end()}
         {
             init_buf_ptrs();
         }
 
         template<class SAlloc>
-        constexpr basic_ostringstream(const std::basic_string<CharT, Traits, SAlloc>& s, const Allocator& a)
+        constexpr basic_ostringstream(const std::basic_string<char_type, traits_type, SAlloc>& s, const Allocator& a)
             : buf{s.begin(), s.end(), a}
         {
             init_buf_ptrs();
         }
 
-        template<std::convertible_to<std::basic_string_view<CharT, Traits>> StringViewLike>
+        template<std::convertible_to<std::string_view> StringViewLike>
         constexpr explicit basic_ostringstream(const StringViewLike& sv)
             : buf{sv}
         {
             init_buf_ptrs();
         }
 
-        template<std::convertible_to<std::basic_string_view<CharT, Traits>> StringViewLike>
+        template<std::convertible_to<std::string_view> StringViewLike>
         constexpr basic_ostringstream(const StringViewLike& sv, const Allocator& a)
             : buf{sv, a}
         {
@@ -235,23 +287,23 @@ namespace lib2
 
         basic_ostringstream(const basic_ostringstream&) = delete;
 
-        constexpr std::basic_string_view<CharT, Traits> view() const noexcept
+        constexpr std::string_view view() const noexcept
         {
-            return {this->pbeg(), this->pcur()};
+            return {reinterpret_cast<const char*>(this->pbeg()), reinterpret_cast<const char*>(this->pcur())};
         }
 
-        constexpr std::basic_string<CharT, Traits, Allocator> str() const&
+        constexpr std::basic_string<char_type, traits_type, Allocator> str() const&
         {
-            return std::basic_string<CharT, Traits, Allocator>{view()};
+            return std::basic_string<char_type, traits_type, Allocator>{view()};
         }
 
         template<class SAlloc>
-        constexpr std::basic_string<CharT, Traits, SAlloc> str(const SAlloc& a) const
+        constexpr std::basic_string<char_type, traits_type, SAlloc> str(const SAlloc& a) const
         {
-            return std::basic_string<CharT, Traits, SAlloc>{view(), a};
+            return std::basic_string<char_type, traits_type, SAlloc>{view(), a};
         }
 
-        constexpr std::basic_string<CharT, Traits, Allocator> str() && noexcept
+        constexpr std::basic_string<char_type, traits_type, Allocator> str() && noexcept
         {
             // Turn capacity into size. Make the data "real"
             const auto written {this->pcur() - this->pbeg()};
@@ -266,72 +318,91 @@ namespace lib2
             return temp;
         }
 
-        constexpr void str(const std::basic_string<CharT, Traits, Allocator>& s)
+        constexpr void str(const std::basic_string<char_type, traits_type, Allocator>& s)
         {
             buf = s;
             init_buf_ptrs();
         }
 
         template<class SAlloc>
-        constexpr void str(const std::basic_string<CharT, Traits, SAlloc>& s)
+        constexpr void str(const std::basic_string<char_type, traits_type, SAlloc>& s)
         {
             buf.assign(s.begin(), s.end());
             init_buf_ptrs();
         }
 
-        constexpr void str(std::basic_string<CharT, Traits, Allocator>&& s) noexcept
+        constexpr void str(std::basic_string<char_type, traits_type, Allocator>&& s) noexcept
         {
             buf = std::move(s);
             init_buf_ptrs();
         }
 
-        template<std::convertible_to<std::basic_string_view<CharT, Traits>> StringViewLike>
+        template<std::convertible_to<std::string_view> StringViewLike>
         constexpr void str(const StringViewLike& t)
         {
             buf = t;
             init_buf_ptrs();
         }
 
-        using basic_ostream<CharT>::write;
+        constexpr void put(const char ch)
+        {
+            ostream::put(std::byte(ch));
+        }
 
-        constexpr void write(const char_type* s, size_type count) override
+        constexpr void write(const std::byte* const s, const size_type count) override
         {
             if ((this->amount_written() + count) > buf.capacity())
             {
                 resize_str(count);
             }
 
-            Traits::copy(this->pcur(), s, count);
+            std::copy_n(s, count, this->pcur());
             this->pbump(count);
         }
 
-        constexpr void fill(const char_type& ch, size_type count) override
+        constexpr void write(const char_type* const s, const size_type count)
+        {
+            write(reinterpret_cast<const std::byte*>(s), count);
+        }
+
+        constexpr void write(const std::string_view str)
+        {
+            write(reinterpret_cast<const std::byte*>(str.data()), str.size());
+        }
+
+        constexpr void fill(const std::byte ch, size_type count) override
         {
             if ((this->amount_written() + count) > buf.capacity())
             {
                 resize_str(count);
             }
 
-            Traits::assign(this->pcur(), count, ch);
+            std::fill_n(this->pcur(), count, ch);
             this->pbump(count);
+        }
+
+        constexpr void fill(const char_type ch, size_type count)
+        {
+            fill(std::byte(ch), count);
         }
 
         constexpr void swap(basic_ostringstream& other) noexcept
         {
             std::swap(buf, other.buf);
-            basic_ostream<CharT>::swap(other);
+            init_buf_ptrs();
+            other.init_buf_ptrs();
         }
     protected:
-        constexpr void overflow(CharT ch) override
+        constexpr void overflow(const std::byte ch) override
         {
             write(&ch, 1);
         }
     private:
-        std::basic_string<CharT, Traits, Allocator> buf;
+        std::basic_string<char_type, traits_type, Allocator> buf;
 
         constexpr void init_buf_ptrs() noexcept
         {
-            this->setp(buf.data(), buf.data() + buf.capacity());
+            this->setp(reinterpret_cast<std::byte*>(buf.data()), reinterpret_cast<std::byte*>(buf.data() + buf.capacity()));
             this->pbump(buf.size());
         }
 
@@ -372,15 +443,15 @@ namespace lib2
     };
 
     export
-    template<character CharT, class Traits = std::char_traits<CharT>, class Allocator = std::allocator<CharT>>
-    class basic_stringstream : public basic_iostream<CharT>
+    template<class Allocator = std::allocator<char>>
+    class basic_stringstream : public iostream
     {
     public:
-        using value_type     = typename basic_istream<CharT>::value_type;
-        using size_type      = typename basic_istream<CharT>::size_type;
-        using ssize_type     = typename basic_istream<CharT>::ssize_type;
-        using char_type      = CharT;
-        using traits_type    = Traits;
+        using value_type     = istream::value_type;
+        using size_type      = istream::size_type;
+        using ssize_type     = istream::ssize_type;
+        using char_type      = char;
+        using traits_type    = std::char_traits<char>;
         using pos_type       = typename traits_type::pos_type;
         using off_type       = typename traits_type::off_type;
         using allocator_type = Allocator;
@@ -390,13 +461,13 @@ namespace lib2
             init_buf_ptrs();
         }
 
-        constexpr explicit basic_stringstream(const std::basic_string<CharT, Traits, Allocator>& s)
+        constexpr explicit basic_stringstream(const std::basic_string<char_type, traits_type, Allocator>& s)
             : buf{s}
         {
             init_buf_ptrs();
         }
 
-        constexpr explicit basic_stringstream(std::basic_string<CharT, Traits, Allocator>&& s) noexcept
+        constexpr explicit basic_stringstream(std::basic_string<char_type, traits_type, Allocator>&& s) noexcept
             : buf{std::move(s)}
         {
             init_buf_ptrs();
@@ -409,27 +480,27 @@ namespace lib2
         }
 
         template<class SAlloc>
-        constexpr explicit basic_stringstream(const std::basic_string<CharT, Traits, SAlloc>& s)
+        constexpr explicit basic_stringstream(const std::basic_string<char_type, traits_type, SAlloc>& s)
             : buf{s.begin(), s.end()}
         {
             init_buf_ptrs();
         }
 
         template<class SAlloc>
-        constexpr basic_stringstream(const std::basic_string<CharT, Traits, SAlloc>& s, const Allocator& a)
+        constexpr basic_stringstream(const std::basic_string<char_type, traits_type, SAlloc>& s, const Allocator& a)
             : buf{s.begin(), s.end(), a}
         {
             init_buf_ptrs();
         }
 
-        template<std::convertible_to<std::basic_string_view<CharT, Traits>> StringViewLike>
+        template<std::convertible_to<std::string_view> StringViewLike>
         constexpr explicit basic_stringstream(const StringViewLike& sv)
             : buf{sv}
         {
             init_buf_ptrs();
         }
 
-        template<std::convertible_to<std::basic_string_view<CharT, Traits>> StringViewLike>
+        template<std::convertible_to<std::string_view> StringViewLike>
         constexpr basic_stringstream(const StringViewLike& sv, const Allocator& a)
             : buf{sv, a}
         {
@@ -454,28 +525,27 @@ namespace lib2
 
         basic_stringstream(const basic_stringstream&) = delete;
 
-        constexpr std::basic_string_view<CharT, Traits> view() const noexcept
+        [[nodiscard]] constexpr std::string_view view() const noexcept
         {
-            return {this->pbeg(), this->pcur()};
+            return {reinterpret_cast<const char*>(this->pbeg()), reinterpret_cast<const char*>(this->pcur())};
         }
 
-        constexpr std::basic_string<CharT, Traits, Allocator> str() const&
+        constexpr std::basic_string<char_type, traits_type, Allocator> str() const&
         {
-            return std::basic_string<CharT, Traits, Allocator>{view()};
+            return std::basic_string<char_type, traits_type, Allocator>{view()};
         }
 
         template<class SAlloc>
-        constexpr std::basic_string<CharT, Traits, SAlloc> str(const SAlloc& a) const
+        constexpr std::basic_string<char_type, traits_type, SAlloc> str(const SAlloc& a) const
         {
-            return std::basic_string<CharT, Traits, SAlloc>{view(), a};
+            return std::basic_string<char_type, traits_type, SAlloc>{view(), a};
         }
 
-        constexpr std::basic_string<CharT, Traits, Allocator> str() && noexcept
+        constexpr std::basic_string<char_type, traits_type, Allocator> str() && noexcept
         {
             // Turn capacity into size. Make the data "real"
-            const auto written {this->pcur() - this->pbeg()};
-            buf.resize_and_overwrite(buf.capacity(), [&](const auto, const auto) {
-                return written;
+            buf.resize_and_overwrite(buf.capacity(), [this](const auto, const auto) {
+                return this->amount_written();
             });
 
             const auto temp {std::move(buf)};
@@ -485,70 +555,82 @@ namespace lib2
             return temp;
         }
 
-        constexpr void str(const std::basic_string<CharT, Traits, Allocator>& s)
+        constexpr void str(const std::basic_string<char_type, traits_type, Allocator>& s)
         {
             buf = s;
             init_buf_ptrs();
         }
 
         template<class SAlloc>
-        constexpr void str(const std::basic_string<CharT, Traits, SAlloc>& s)
+        constexpr void str(const std::basic_string<char_type, traits_type, SAlloc>& s)
         {
             buf.assign(s.begin(), s.end());
             init_buf_ptrs();
         }
 
-        constexpr void str(std::basic_string<CharT, Traits, Allocator>&& s) noexcept
+        constexpr void str(std::basic_string<char_type, traits_type, Allocator>&& s) noexcept
         {
             buf = std::move(s);
             init_buf_ptrs();
         }
 
-        template<std::convertible_to<std::basic_string_view<CharT, Traits>> StringViewLike>
+        template<std::convertible_to<std::string_view> StringViewLike>
         constexpr void str(const StringViewLike& t)
         {
             buf = t;
             init_buf_ptrs();
         }
 
-        using basic_ostream<CharT>::write;
-
-        constexpr void write(const char_type* s, size_type count) override
+        constexpr void put(const char ch)
         {
-            const auto written {this->pcur() - this->pbeg()};
-            if ((written + count) > buf.capacity())
+            ostream::put(std::byte(ch));
+        }
+
+        constexpr void write(const std::byte* const s, const size_type count) override
+        {
+            if ((this->amount_written() + count) > buf.capacity())
             {
                 resize_str(count);
             }
 
-            Traits::copy(this->pcur(), s, count);
+            std::copy_n(s, count, this->pcur());
             this->pbump(count);
         }
 
-        constexpr void fill(const char_type& ch, size_type count) override
+        constexpr void write(const char_type* const s, const size_type count)
         {
-            const auto written {this->pcur() - this->pbeg()};
-            if ((written + count) > buf.capacity())
+            write(reinterpret_cast<const std::byte*>(s), count);
+        }
+
+        constexpr void fill(const std::byte ch, size_type count) override
+        {
+            if ((this->amount_written() + count) > buf.capacity())
             {
                 resize_str(count);
             }
 
-            Traits::assign(this->pcur(), count, ch);
+            std::fill_n(this->pcur(), count, ch);
             this->pbump(count);
+        }
+
+        constexpr void fill(const char_type ch, size_type count)
+        {
+            fill(std::byte(ch), count);
         }
 
         constexpr void swap(basic_stringstream& other) noexcept
         {
             std::swap(buf, other.buf);
-            basic_iostream<CharT>::swap(other);
+            init_buf_ptrs();
+            other.init_buf_ptrs();
         }
     private:
-        std::basic_string<CharT, Traits, Allocator> buf;
+        std::basic_string<char_type, traits_type, Allocator> buf;
 
         constexpr void init_buf_ptrs() noexcept
         {
-            this->setg(buf.data(), buf.data(), buf.data() + buf.size());
-            this->setp(buf.data(), buf.data() + buf.capacity());
+            this->setg(reinterpret_cast<std::byte*>(buf.data()), reinterpret_cast<std::byte*>(buf.data()), reinterpret_cast<std::byte*>(buf.data() + buf.size()));
+            this->setp(reinterpret_cast<std::byte*>(buf.data()), reinterpret_cast<std::byte*>(buf.data() + buf.capacity()));
             this->pbump(buf.size());
         }
 
@@ -589,40 +671,31 @@ namespace lib2
     };
 
     export
-    using istringstream  = basic_istringstream<char>;
-    
-    export
-    using wistringstream = basic_istringstream<wchar_t>;
-    
-    export
-    using ostringstream  = basic_ostringstream<char>;
-    
-    export
-    using wostringstream = basic_ostringstream<wchar_t>;
-    
-    export
-    using stringstream   = basic_stringstream<char>;
-    
-    export
-    using wstringstream  = basic_stringstream<wchar_t>;
+    using ostringstream = basic_ostringstream<>;
 
     export
-    template<class CharT, class Traits, class Alloc>
-    void swap(basic_istringstream<CharT, Traits, Alloc>& lhs, basic_istringstream<CharT, Traits, Alloc>& rhs) noexcept
+    using istringstream = basic_istringstream<>;
+    
+    export
+    using stringstream  = basic_stringstream<>;
+
+    export
+    template<class Alloc>
+    void swap(basic_istringstream<Alloc>& lhs, basic_istringstream<Alloc>& rhs) noexcept
     {
         lhs.swap(rhs);
     }
 
     export
-    template<class CharT, class Traits, class Alloc>
-    void swap(basic_ostringstream<CharT, Traits, Alloc>& lhs, basic_ostringstream<CharT, Traits, Alloc>& rhs) noexcept
+    template<class Alloc>
+    void swap(basic_ostringstream<Alloc>& lhs, basic_ostringstream<Alloc>& rhs) noexcept
     {
         lhs.swap(rhs);
     }
 
     export
-    template<class CharT, class Traits, class Alloc>
-    void swap(basic_stringstream<CharT, Traits, Alloc>& lhs, basic_stringstream<CharT, Traits, Alloc>& rhs) noexcept
+    template<class Alloc>
+    void swap(basic_stringstream<Alloc>& lhs, basic_stringstream<Alloc>& rhs) noexcept
     {
         lhs.swap(rhs);
     }
