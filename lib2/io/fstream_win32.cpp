@@ -454,30 +454,52 @@ namespace lib2
             setbuf(nullptr, default_buffer_size);
         }
 
-        std::size_t read_count {0};
+        std::size_t read_count {std::min(count, this->read_available())};
 
-        if (const auto avail {this->read_available()})
+        if (read_count)
         {
-            const auto amount {std::min(count, avail)};
-            os.write(this->gcur(), amount);
-            this->gbump(amount);
-            count -= amount;
-            read_count += amount;
+            os.write(this->gcur(), read_count);
+            this->gbump(read_count);
+            count -= read_count;
         }
 
-        // If the request is larger than our buffer capacity,
-        // just read directly into the user buffer.
-        if (count > buf_capacity)
+        while (count)
         {
-            // TODO
-            // read_count += io_read(handle, s, count);
-        }
-        else if (count)
-        {
-            underflow();
-            os.write(this->gcur(), count);
-            this->gbump(count);
-            read_count += count;
+            // Use our own buffer if we have room
+            if (buf_capacity >= count)
+            {
+                if (underflow())
+                {
+                    const auto amount_read {std::min(count, this->read_available())};
+                    os.write(this->gcur(), amount_read);
+                    this->gbump(amount_read);
+                    read_count += amount_read;
+                }
+                break;
+            }
+
+            // Write directly into the ostream
+            if (os.write_available() >= count)
+            {
+                const auto amount_read {os.produce([&](const auto beg, const auto) {
+                    return beg + io_read(handle, beg, count);
+                })};
+                count -= amount_read;
+                read_count += amount_read;
+            }
+            // Loop on our own buffer
+            else if (underflow())
+            {
+                const auto amount_read {std::min(count, this->read_available())};
+                os.write(this->gcur(), amount_read);
+                this->gbump(amount_read);
+                count -= amount_read;
+                read_count += amount_read;
+            }
+            else
+            {
+                break;
+            }
         }
 
         return read_count;
@@ -1008,22 +1030,39 @@ namespace lib2
                 count -= read_count;
             }
 
-            // If the request is larger than our buffer capacity,
-            // just read directly into the user buffer.
-
-            if (count)
+            while (count)
             {
-                if (count >= sizeof(buf))
+                if (sizeof(buf) >= count)
                 {
-                    // TODO
-                    // read_count += io_read(handle, s, count);
+                    if (underflow())
+                    {
+                        const auto amount_read {std::min(count, this->read_available())};
+                        os.write(this->gcur(), amount_read);
+                        this->gbump(amount_read);
+                        read_count += amount_read;
+                    }
+                    break;
+                }
+                
+                if (os.write_available() >= count)
+                {
+                    const auto amount_read {os.produce([&](const auto beg, const auto) {
+                        return beg + io_read(handle, beg, count);
+                    })};
+                    count -= amount_read;
+                    read_count += amount_read;
+                }
+                else if (underflow())
+                {
+                    const auto amount_read {std::min(count, this->read_available())};
+                    os.write(this->gcur(), amount_read);
+                    this->gbump(amount_read);
+                    count -= amount_read;
+                    read_count += amount_read;
                 }
                 else
                 {
-                    underflow();
-                    os.write(this->gcur(), count);
-                    this->gbump(count);
-                    read_count += count;
+                    break;
                 }
             }
 

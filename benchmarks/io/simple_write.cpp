@@ -230,6 +230,6 @@ int main()
     lib2_fstream_vfmt b8;
 
     lib2::benchmarking::print_benchmarks(ctx,
-        b1, b2, b3, b4, b5, b6, b7, b8
+        b1, b2, b3, b4, b5, /*b6,*/ b7, b8
     );
 }
