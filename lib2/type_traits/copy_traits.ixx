@@ -62,13 +62,11 @@ namespace lib2
 	template<class From, class To>
 	struct copy_extent : std::type_identity<To> {};
 
-	export
 	template<class From, class To>
 		requires(std::rank_v<From> > 0 &&
 				 std::extent_v<From> > 0)
 	struct copy_extent<From, To> : std::type_identity<To[std::extent_v<From>]> {};
 
-	export
 	template<class From, class To>
 		requires(std::rank_v<From> > 0 &&
 				 std::extent_v<From> == 0)
@@ -82,7 +80,6 @@ namespace lib2
 	template<class From, class To>
 	struct copy_all_extents : std::type_identity<To> {};
 
-	export
 	template<class From, class To>
 		requires(std::rank_v<From> > 0)
 	struct copy_all_extents<From, To> : copy_extent<From,
@@ -96,7 +93,6 @@ namespace lib2
 	template<class T>
 	struct remove_all_pointers : std::type_identity<T> {};
 
-	export
 	template<class T>
 		requires(std::is_pointer_v<T>)
 	struct remove_all_pointers<T> : remove_all_pointers<std::remove_pointer_t<T>> {};
@@ -121,7 +117,6 @@ namespace lib2
 	template<class From, class To>
 	struct copy_all_pointers : std::type_identity<To> {};
 
-	export
 	template<class From, class To>
 		requires(std::is_pointer_v<From>)
 	struct copy_all_pointers<From, To> :

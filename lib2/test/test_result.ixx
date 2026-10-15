@@ -53,7 +53,7 @@ namespace lib2::test
 				return ptr;
 			}
 
-			void failure(std::exception_ptr e) noexcept 
+			void failure(const std::exception_ptr e) noexcept 
 			{
 				ptr = e;
 			}

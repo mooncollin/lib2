@@ -10,3 +10,10 @@ PRIVATE
     err_win32.cpp
 )
 endif()
+
+if (LINUX)
+target_sources(lib2
+PRIVATE
+    err_linux.cpp
+)
+endif()

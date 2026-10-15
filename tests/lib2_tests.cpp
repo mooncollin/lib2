@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 import std;
 
 import lib2;
@@ -54,20 +56,20 @@ int main(const int argc, char* const argv[])
     {
         for (const auto& test : tests)
         {
-            lib2::print<"{}\n">(test.name());
+            lib2::print<"{}\n">(test.name);
         }
     }
     else
     {
         bool found {false};
-        for (auto& test : tests)
+        for (const auto& test : tests)
         {
-            if (test.name() == test_name)
+            if (test.name == test_name)
             {
                 const auto result {test.run()};
                 if (result.failed())
                 {
-                    lib2::format_to<"{}:\n">(lib2::cerr, test.name());
+                    lib2::format_to<"{}:\n">(lib2::cerr, test.name);
                     result.on(lib2::overloaded{
                         [&](const lib2::test::assert_exception& e) {
                             lib2::format_to<" {}\n">(lib2::cerr, e);

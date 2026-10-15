@@ -38,28 +38,28 @@ namespace lib2
             switch (align)
             {
             case fill_align_parser::align_type::left:
-                ctx.stream.write(str);
-                ctx.stream.fill(fill, padding);
+                ctx.out.write(str);
+                ctx.out.fill(fill, padding);
                 break;
             case fill_align_parser::align_type::right:
-                ctx.stream.fill(fill, padding);
-                ctx.stream.write(str);
+                ctx.out.fill(fill, padding);
+                ctx.out.write(str);
                 break;
             case fill_align_parser::align_type::center:
                 {
                     const auto left_pad {padding / 2};
                     const auto right_pad {padding - left_pad};
 
-                    ctx.stream.fill(fill, left_pad);
-                    ctx.stream.write(str);
-                    ctx.stream.fill(fill, right_pad);
+                    ctx.out.fill(fill, left_pad);
+                    ctx.out.write(str);
+                    ctx.out.fill(fill, right_pad);
                 }
                 break;
             }
         }
         else
         {
-            ctx.stream.write(str);
+            ctx.out.write(str);
         }
     }
 }

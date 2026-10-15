@@ -27,13 +27,12 @@ namespace lib2
     template<std::ranges::input_range R>
     escaped(R&&) -> escaped<std::ranges::views::all_t<R>>;
 
-    export
     template<class V>
     struct formatter<escaped<V>> : public format_parser
     {
         void format(const escaped<V>& e, format_context& ctx) const
         {
-            ctx.stream.put('"');
+            ctx.out.put('"');
 
             const auto utf_view {views::utf_codepoints(e.base)};
             for (auto it {utf_view.begin()}; it != utf_view.end(); ++it)
@@ -41,41 +40,40 @@ namespace lib2
                 switch (*it)
                 {
                 case '\t':
-                    ctx.stream.write("\\t");
+                    ctx.out.write("\\t");
                     break;
                 case '\n':
-                    ctx.stream.write("\\n");
+                    ctx.out.write("\\n");
                     break;
                 case '\r':
-                    ctx.stream.write("\\r");
+                    ctx.out.write("\\r");
                     break;
                 case '"':
-                    ctx.stream.write("\\\"");
+                    ctx.out.write("\\\"");
                     break;
                 case '\\':
-                    ctx.stream.write("\\\\");
+                    ctx.out.write("\\\\");
                     break;
                 default:
                     if (it.invalid())
                     {
-                        format_to<"\\x{:0>2x}">(ctx.stream, *it);
+                        format_to<"\\x{:0>2x}">(ctx.out, *it);
                     }
                     else if (*it <= 0x7F)
                     {
-                        ctx.stream.put(static_cast<char>(*it));
+                        ctx.out.put(static_cast<char>(*it));
                     }
                     else
                     {
-                        format_to<"\\u{:x}">(ctx.stream, *it);
+                        format_to<"\\u{:x}">(ctx.out, *it);
                     }
                 }
             }
 
-            ctx.stream.put('"');
+            ctx.out.put('"');
         }
     };
 
-    export
     template<>
     struct formatter<std::string_view> : public width_parser, public precision_parser
     {
@@ -104,11 +102,10 @@ namespace lib2
 
         static void default_format(const std::string_view str, format_context& ctx)
         {
-            ctx.stream.write(str);
+            ctx.out.write(str);
         }
     };
 
-    export
     template<class Allocator>
     struct formatter<std::basic_string<char, std::char_traits<char>, Allocator>> : public formatter<std::string_view>
     {
@@ -123,27 +120,21 @@ namespace lib2
         }
     };
 
-    export
     template<>
     struct formatter<const char*> : public formatter<std::string_view> {};
 
-    export
     template<>
     struct formatter<char*> : public formatter<const char*> {};
 
-    export
     template<std::size_t N>
     struct formatter<const char(&)[N]> : public formatter<const char*> {};
 
-    export
     template<std::size_t N>
     struct formatter<char(&)[N]> : public formatter<const char*> {};
 
-    export
     template<std::size_t N>
     struct formatter<const char[N]> : public formatter<const char*> {};
 
-    export
     template<std::size_t N>
     struct formatter<char[N]> : public formatter<const char*> {};
 }

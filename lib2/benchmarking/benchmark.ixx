@@ -3,39 +3,22 @@ export module lib2.benchmarking:benchmark;
 import std;
 
 import :do_not_optimize;
+import :context;
 
 namespace lib2::benchmarking
 {
 	export
-	class benchmark
-	{
-	public:
-		benchmark(std::string str) noexcept
-			: name_{std::move(str)} {}
-
-		virtual void setup() {}
-		virtual void tear_down() {}
-		virtual void operator()() = 0;
-		virtual ~benchmark() noexcept = default;
-
-		[[nodiscard]] const std::string& name() const noexcept
-		{
-			return name_;
-		}
-	private:
-		std::string name_;
-	};
+	template<class F>
+	concept benchmark = std::is_invocable_r_v<void, F, state&>;
 
 	export
-	class noop_benchmark : public benchmark
+	void noop_benchmark(state& state) noexcept
 	{
-	public:
-		noop_benchmark()
-			: benchmark{"lib2::benchmarking::noop"} {}
-
-		void operator()() noexcept final
+		for (auto _ : state)
 		{
 			do_not_optimize(0);
 		}
-	};
+	}
+
+	static_assert(benchmark<decltype(noop_benchmark)>);
 }

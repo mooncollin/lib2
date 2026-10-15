@@ -4,37 +4,37 @@ import std;
 
 import lib2;
 
-import :stringstream;
-import :ostream;
-import :istream;
-import :fstream;
+import :string;
+// import :ostream;
+// import :istream;
+import :file;
 
 namespace lib2::tests::io
 {
     lib2::test::test_suite get_tests()
     {
-        lib2::test::test_suite suite{"io library tests"};
+        lib2::test::test_suite suite;
 
-        suite.add_test_case<stringstream_default_constructor_test>();
-        suite.add_test_case<stringstream_constructor_test>();
-        suite.add_test_case<stringstream_read_test>();
-        suite.add_test_case<stringstream_write_test>();
+        suite.add_test_case("string_sink::default_constructor", string_sink_default_constructor);
+        suite.add_test_case("string_sink::constructor", string_sink_constructor);
+        suite.add_test_case("string_sink::write", string_sink_write);
+        // suite.add_test_case("string_source::read", string_source_read);
 
-        suite.add_test_case<ostream_char_test>();
-        suite.add_test_case<ostream_string_literal_test>();
-        suite.add_test_case<ostream_string_test>();
-        // suite.add_test_case<ostream_istream_test>();
+        // suite.add_test_case("ostream::char", ostream_char);
+        // suite.add_test_case("ostream::string_literal", ostream_string_literal);
+        // suite.add_test_case("ostream::string", ostream_string);
+        // suite.add_test_case("ostream::istream", ostream_istream);
 
-        suite.add_test_case<istream_bump_test>();
-        suite.add_test_case<istream_read_test>();
-        suite.add_test_case<istream_read_delim_test>();
-        suite.add_test_case<istream_ignore_test>();
-        suite.add_test_case<istream_ignore_delim_test>();
-        suite.add_test_case<istream_iterator_test>();
+        // suite.add_test_case("istream::bump", istream_bump);
+        // suite.add_test_case("istream::read", istream_read);
+        // suite.add_test_case("istream::read_delim", istream_read_delim);
+        // suite.add_test_case("istream::ignore", istream_ignore);
+        // suite.add_test_case("istream::ignore_delim", istream_ignore_delim);
+        // suite.add_test_case("istream::iterator", istream_iterator);
 
-        suite.add_test_case<ofstream_default_constructor_test>();
-        suite.add_test_case<ofstream_open_test>();
-        suite.add_test_case<ofstream_write_test>();
+        suite.add_test_case("file_sink::default_constructor", file_sink_default_constructor);
+        suite.add_test_case("file_sink::open", file_sink_open);
+        suite.add_test_case("file_sink::write", file_sink_write);
 
         return std::move(suite);
     }

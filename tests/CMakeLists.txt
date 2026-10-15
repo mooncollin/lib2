@@ -1,3 +1,5 @@
+enable_testing()
+
 add_executable(lib2_tests lib2_tests.cpp)
 
 target_link_libraries(lib2_tests
@@ -25,9 +27,9 @@ set(GENERATED_TESTS_FILE "${CMAKE_CURRENT_BINARY_DIR}/generated_tests.cmake")
 add_custom_command(
   TARGET lib2_tests POST_BUILD
   COMMAND lib2_tests -l > tests.txt
-  COMMAND ${CMAKE_COMMAND} -DINPUT_FILE=tests.txt -DOUTPUT_FILE=${GENERATED_TESTS_FILE}
+  COMMAND ${CMAKE_COMMAND} -DINPUT_FILE=tests.txt -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/generated_tests.cmake
           -DTEST_EXECUTABLE=$<TARGET_FILE:lib2_tests> -P ${CMAKE_CURRENT_SOURCE_DIR}/generate_tests.cmake
   COMMENT "Discovering tests from lib2_tests"
 )
 add_custom_target(discover_my_tests DEPENDS lib2_tests)
-include(${GENERATED_TESTS_FILE} OPTIONAL)
+include(${CMAKE_CURRENT_BINARY_DIR}/generated_tests.cmake OPTIONAL)

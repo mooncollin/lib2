@@ -2,69 +2,49 @@ import std;
 
 import lib2;
 
-class int_benchmark : public lib2::benchmarking::benchmark
+int get_int() noexcept
 {
-public:
-    using lib2::benchmarking::benchmark::benchmark;
-protected:
-    static int get_int()
-    {
-        return std::rand();
-    }
-};
+    return std::rand();
+}
 
-class ostream_bench final : public int_benchmark
+void ostream_bench(lib2::benchmarking::state& state)
 {
-public:
-    ostream_bench()
-        : int_benchmark{"std::ostream"} {}
+    std::ostringstream ss;
 
-    void operator()()
+    for (auto _ : state)
     {
         ss.str({});
-        ss << std::setbase(2) << std::showbase << this->get_int();
+        ss << std::setbase(2) << std::showbase << get_int();
     }
-private:
-    std::ostringstream ss;
-};
+}
 
-class format_bench final : public int_benchmark
+void format_bench(lib2::benchmarking::state& state)
 {
-public:
-    format_bench()
-        : int_benchmark{"std::format"} {}
-
-    void operator()()
+    for (auto _ : state)
     {
-        const auto str {std::format("{:#b}", this->get_int())};
+        const auto str {std::format("{:#b}", get_int())};
         lib2::benchmarking::do_not_optimize(str);
     }
-private:
-    std::string str;
-};
+}
 
-class lib2_format final : public int_benchmark
+void lib2_format(lib2::benchmarking::state& state)
 {
-public:
-    lib2_format()
-        : int_benchmark{"lib2::format"} {}
-
-    void operator()()
+    for (auto _ : state)
     {
-        const auto str {lib2::format<"{:#b}">(this->get_int())};
+        const auto str {lib2::format<"{:#b}">(get_int())};
         lib2::benchmarking::do_not_optimize(str);
     }
-};
+}
 
 int main()
 {
-    const lib2::benchmarking::benchmarking_min_time ctx {std::chrono::seconds{5}};
+    constexpr lib2::benchmarking::benchmarking_min_time ctx {std::chrono::seconds{5}};
 
-    ostream_bench b1;
-    format_bench b2;
-    lib2_format b3;
+    lib2::benchmarking::suite suite;
 
-    lib2::benchmarking::print_benchmarks(ctx,
-        b1, b2, b3
-    );
+    suite.add("std::ostringstream", &ostream_bench);
+    suite.add("std::format", &format_bench);
+    suite.add("lib2::format", &lib2_format);
+
+    lib2::benchmarking::print_benchmarks(ctx, suite);
 }

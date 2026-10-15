@@ -12,7 +12,7 @@ namespace lib2
 
         void string_literal(const std::string_view str)
         {
-            fmt_ctx.stream.write(str);
+            fmt_ctx.out.write(str);
         }
 
         void arg(const std::size_t idx, format_parse_context& parse_ctx)
@@ -37,19 +37,17 @@ namespace lib2
         }
     };
 
-    text_ostream vformat_to(text_ostream os, const std::string_view fmt, const format_args args)
+    void vformat_to(lib2::io::dyn_sink os, const std::string_view fmt, const format_args args)
     {
         runtime_collector collector {.fmt_ctx={os, args}};
         format_parse_context parse_ctx {fmt, args.size()};
         do_format(parse_ctx, collector);
-        return os;
     }
 
-    text_ostream vformat_to(const std::locale& loc, text_ostream os, const std::string_view fmt, const format_args args)
+    void vformat_to(const std::locale& loc, lib2::io::dyn_sink os, const std::string_view fmt, const format_args args)
     {
         runtime_collector collector {.fmt_ctx={loc, os, args}};
         format_parse_context parse_ctx {fmt, args.size()};
         do_format(parse_ctx, collector);
-        return os;
     }
 }

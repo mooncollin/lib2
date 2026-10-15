@@ -5,8 +5,6 @@ import std;
 import lib2.io;
 import lib2.fmt;
 
-import :benchmark_output;
-
 namespace lib2::benchmarking
 {
     template<class Rep, class Period>
@@ -64,7 +62,7 @@ namespace lib2::benchmarking
         }
     }
 
-    static float calc_perf_multiple(const benchmark_result& r1, const benchmark_result& r2) noexcept
+    static float calc_perf_multiple(const result& r1, const result& r2) noexcept
     {
         const auto time_multiple {static_cast<float>(r2.total_time.count()) / static_cast<float>(r1.total_time.count())};
         const auto iteration_multiple {static_cast<float>(r1.num_iterations) / static_cast<float>(r2.num_iterations)};
@@ -72,7 +70,7 @@ namespace lib2::benchmarking
         return std::max(time_multiple, iteration_multiple);
     }
 
-    void print_benchmarks(lib2::text_ostream& stream, const std::vector<std::pair<std::string_view, benchmark_result>>& results)
+    void print_benchmarks(lib2::io::dyn_sink stream, const std::vector<std::pair<std::string_view, result>>& results)
     {
         std::size_t name_column_width {9};
         std::size_t time_column_width {5};

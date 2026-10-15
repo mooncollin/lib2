@@ -585,60 +585,6 @@ namespace lib2
         return {*this};
     }
 
-    // export
-    // text_istream& ws(text_istream& is)
-    // {
-    //     while (is.get())
-    //     {
-    //         is.consume([](const auto begin, const auto end) {
-    //             return std::find_if_not(begin, end, isspace_ascii);
-    //         });
-    //         if (is.read_available())
-    //         {
-    //             break;
-    //         }
-    //     }
-
-    //     return is;
-    // }
-
-    // export
-    // template<class T>
-    // bool operator>>(basic_istream<T>& is, T& t)
-    // {
-    //     if (auto val {is.get()})
-    //     {
-    //         t = std::move(*val);
-    //         is.bump();
-    //         return true;
-    //     }
-
-    //     return false;
-    // }
-
-    // export
-    // bool operator>>(text_istream& is, std::string& str)
-    // {
-    //     str.clear();
-    //     is >> ws;
-
-    //     while (is.get())
-    //     {
-    //         is.consume([&](const auto begin, auto end) {
-    //             end = std::find_if(begin, end, isspace_ascii);
-    //             str.append(begin, end);
-    //             return end;
-    //         });
-
-    //         if (is.read_available())
-    //         {
-    //             break;
-    //         }
-    //     }
-
-    //     return !str.empty();
-    // }
-
     export
     bool getline(text_istream& is, std::string& str, const char delim)
     {

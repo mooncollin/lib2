@@ -4,29 +4,43 @@ import std;
 
 namespace lib2
 {
-	export
-	class scan_parse_error : public std::logic_error
-	{
-	public:
-		using std::logic_error::logic_error;
-	};
+    export
+    class scan_error
+    {
+    public:
+        enum code
+        {
+            end_of_input,
+            invalid_scanned_value,
+            invalid_literal,
+            length_too_short,
+            positive_overflow,
+            negative_overflow,
+            positive_underflow,
+            negative_underflow
+        };
 
-	export
-	class scan_pattern_not_matched : public std::runtime_error
-	{
-	public:
-		using std::runtime_error::runtime_error;
-	};
+        constexpr scan_error(enum code c, const char* msg) noexcept
+            : code_{c}, msg_{msg} {}
 
-	export
-	class bad_scan : public std::exception, public std::nested_exception
-	{
-	public:
-		using std::nested_exception::nested_exception;
+        [[nodiscard]] constexpr enum code code() const noexcept
+        {
+            return code_;
+        }
 
-		const char* what() const noexcept
-		{
-			return "bad scan";
-		}
-	};
+        [[nodiscard]] constexpr const char* msg() const noexcept
+        {
+            return msg_;
+        }
+    private:
+        enum code code_;
+        const char* msg_;
+    };
+
+    export
+    class scan_parse_error : public std::logic_error
+    {
+    public:
+        using std::logic_error::logic_error;
+    };
 }

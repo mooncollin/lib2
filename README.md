@@ -11,7 +11,7 @@ Any of the public or private APIs here can change at a moments notice. All libra
 | platform | Probe the type of architecture, operating system, compiler, and C++ version you are using at compile time | ✅ | ⚠️ | ❌ |
 | type_traits | Additional type traits | ✅ | ⚠️ | ❌ |
 | strings | More string abstractions and algorithms | ✅ | ⚠️ | ❌ |
-| io | A reimagining of C++ streams and other io functionality | ⚠️ | ⚠️ | ❌ |
+| io | An IO framework | ⚠️ | ⚠️ | ❌ |
 | fmt | A reimagining of std::format utilizing the io library | ✅ | ⚠️ | ❌ |
 | test | A test case framework | ✅ | ✅ | ❌ |
 | benchmarking | A benchmarking framework | ✅ | ✅ | ❌ |

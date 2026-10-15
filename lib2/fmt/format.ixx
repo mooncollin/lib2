@@ -256,10 +256,10 @@ namespace lib2
     };
 
     export
-    text_ostream vformat_to(text_ostream, std::string_view, format_args);
+    void vformat_to(io::dyn_sink, std::string_view, format_args);
 
     export
-    text_ostream vformat_to(const std::locale&, text_ostream, std::string_view, format_args);
+    void vformat_to(const std::locale&, io::dyn_sink, std::string_view, format_args);
 
     export
     template<class... Args>
@@ -292,7 +292,7 @@ namespace lib2
             return estimated_str_size_;
         }
 
-        inline void format(text_ostream os, const Args&... args) const
+        inline void format(io::dyn_sink os, const Args&... args) const
         {
             auto fmt {str};
             if (leading_str_size)
@@ -315,7 +315,7 @@ namespace lib2
                     fmt.remove_suffix(trailing_str_size);
                 }
 
-                vformat_to(os, fmt, make_format_args(args...));
+                vformat_to(os, fmt, lib2::make_format_args(args...));
 
                 if (trailing_str_size)
                 {
@@ -331,7 +331,7 @@ namespace lib2
             }
         }
 
-        inline void format(const std::locale& loc, text_ostream os, const Args&... args) const
+        inline void format(const std::locale& loc, io::dyn_sink os, const Args&... args) const
         {
             auto fmt {str};
             if (leading_str_size)
@@ -398,7 +398,7 @@ namespace lib2
     public:
         consteval cp_format_string() noexcept {}
 
-        static inline void format(text_ostream os, const Args&... args)
+        static inline void format(io::dyn_sink os, const Args&... args)
         {
             if constexpr (collector.all_literals())
             {
@@ -411,13 +411,13 @@ namespace lib2
             }
             else
             {
-                const auto store {make_format_args(args...)};
+                const auto store {lib2::make_format_args(args...)};
                 format_context ctx {os, store};
                 do_format<0>(ctx, std::forward_as_tuple(args...));
             }
         }
 
-        static inline void format(const std::locale& loc, text_ostream os, const Args&... args)
+        static inline void format(const std::locale& loc, io::dyn_sink os, const Args&... args)
         {
             if constexpr (collector.all_literals())
             {
@@ -430,14 +430,14 @@ namespace lib2
             }
             else
             {
-                const auto store {make_format_args(args...)};
+                const auto store {lib2::make_format_args(args...)};
                 format_context ctx {loc, os, store};
                 do_format<0>(ctx, std::forward_as_tuple(args...));
             }
         }
     private:
         template<std::size_t I>
-        static inline void do_format(text_ostream os)
+        static inline void do_format(io::dyn_sink os)
         {
             if constexpr (I != collector.num_instructions)
             {
@@ -464,11 +464,11 @@ namespace lib2
                 {
                     if constexpr (instr.size == 1)
                     {
-                        ctx.stream.put(Fmt[instr.idx]);
+                        ctx.out.put(Fmt[instr.idx]);
                     }
                     else
                     {
-                        ctx.stream.write(Fmt.data() + instr.idx, instr.size);
+                        ctx.out.write(Fmt.data() + instr.idx, instr.size);
                     }
                 }
                 else
@@ -490,70 +490,70 @@ namespace lib2
 
     export
     template<string_literal Fmt, class... Args>
-    constexpr text_ostream format_to(text_ostream os, const Args&... args)
+    constexpr void format_to(io::dyn_sink os, const Args&... args)
     {
         constexpr cp_format_string<Fmt, Args...> fmt_str;
         fmt_str.format(os, args...);
-        return os;
     }
 
     export
     template<string_literal Fmt, class... Args>
-    inline text_ostream format_to(const std::locale& loc, text_ostream os, const Args&... args)
+    inline void format_to(const std::locale& loc, io::dyn_sink os, const Args&... args)
     {
         constexpr cp_format_string<Fmt, Args...> fmt_str;
         fmt_str.format(loc, os, args...);
-        return os;
     }
 
     export
     template<string_literal Fmt, class... Args>
     constexpr std::string format(const Args&... args)
     {
-        ostringstream ss;
+        std::string str;
+        io::string_ref_sink ss{str};
         format_to<Fmt>(ss, args...);
-        return std::move(ss).str();
+        return str;
     }
 
     export
     template<string_literal Fmt, class... Args>
     inline std::string format(const std::locale& loc, const Args&... args)
     {
-        ostringstream ss;
+        std::string str;
+        io::string_ref_sink ss{str};
         format_to<Fmt>(loc, ss, args...);
-        return std::move(ss).str();
+        return str;
     }
 
     export
     inline std::string vformat(const std::string_view fmt, const format_args args)
     {
-        ostringstream ss;
+        std::string str;
+        io::string_ref_sink ss{str};
         vformat_to(ss, fmt, args);
-        return std::move(ss).str();
+        return str;
     }
 
     export
     inline std::string vformat(const std::locale& loc, const std::string_view fmt, const format_args args)
     {
-        ostringstream ss;
+        std::string str;
+        io::string_ref_sink ss{str};
         vformat_to(loc, ss, fmt, args);
-        return std::move(ss).str();
+        return str;
     }
 
     export
     template<class... Args>
-    inline text_ostream format_to(text_ostream os, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
+    inline void format_to(io::dyn_sink os, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
         fmt.format(os, args...);
-        return os;
     }
 
     export
     template<class... Args>
-    inline text_ostream format_to(const std::locale& loc, text_ostream os, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
+    inline void format_to(const std::locale& loc, io::dyn_sink os, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
         fmt.format(loc, os, args...);
-        return os;
     }
 
     export
@@ -562,9 +562,9 @@ namespace lib2
     {
         std::string str;
         str.reserve(fmt.estimated_str_size());
-        ostringstream ss {std::move(str)};
+        io::string_ref_sink ss {str};
         format_to(ss, fmt, args...);
-        return std::move(ss).str();
+        return str;
     }
 
     export
@@ -573,45 +573,45 @@ namespace lib2
     {
         std::string str;
         str.reserve(fmt.estimated_str_size());
-        ostringstream ss {std::move(str)};
+        io::string_ref_sink ss {str};
         format_to(loc, ss, fmt, args...);
-        return std::move(ss).str();
+        return str;
     }
 
     export
     template<string_literal Fmt, class... Args>
     constexpr std::size_t formatted_size(const Args&... args)
     {
-        lib2::size_ostream sos;
-        format_to<Fmt>(sos, args...);
-        return sos.size();
+        io::size_sink ss;
+        format_to<Fmt>(ss, args...);
+        return ss.size;
     }
 
     export
     template<string_literal Fmt, class... Args>
     inline std::size_t formatted_size(const std::locale& loc, const Args&... args)
     {
-        lib2::size_ostream sos;
-        format_to<Fmt>(loc, sos, args...);
-        return sos.size();
+        io::size_sink ss;
+        format_to<Fmt>(loc, ss, args...);
+        return ss.size;
     }
 
     export
     template<class... Args>
     inline std::size_t formatted_size(const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
-        lib2::size_ostream sos;
-        format_to(sos, fmt, args...);
-        return sos.size();
+        io::size_sink ss;
+        format_to(ss, fmt, args...);
+        return ss.size;
     }
 
     export
     template<class... Args>
     inline std::size_t formatted_size(const std::locale& loc, const format_string<std::type_identity_t<Args>...> fmt, const Args&... args)
     {
-        lib2::size_ostream sos;
-        format_to(loc, sos, fmt, args...);
-        return sos.size();
+        io::size_sink ss;
+        format_to(loc, ss, fmt, args...);
+        return ss.size;
     }
 
     export

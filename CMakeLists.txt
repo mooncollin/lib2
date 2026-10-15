@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.1.0)
-set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
 set(CMAKE_CXX_MODULE_STD 1)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -13,10 +13,9 @@ if (MSVC)
     add_link_options(/LTCG)
 endif()
 
-enable_testing()
 add_subdirectory(lib2)
-add_subdirectory(tests)
 add_subdirectory(benchmarks)
+add_subdirectory(tests)
 
 include(CMakePackageConfigHelpers)
 configure_package_config_file(

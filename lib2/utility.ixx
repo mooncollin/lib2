@@ -43,6 +43,44 @@ namespace lib2
 	};
 
 	export
+	class timer
+	{
+		public:
+			using clock_t = std::chrono::steady_clock;
+
+			timer() noexcept
+				: future_time_{} {}
+
+			timer(const clock_t::time_point t) noexcept
+				: future_time_{t} {}
+
+			timer(const clock_t::duration d) noexcept
+				: future_time_{clock_t::now() + d} {}
+
+			[[nodiscard]] bool expired() const noexcept
+			{
+				return clock_t::now() >= future_time_;
+			}
+
+			[[nodiscard]] clock_t::time_point future_time() const noexcept
+			{
+				return future_time_;
+			}
+
+			void reset(const clock_t::time_point t) noexcept
+			{
+				future_time_ = t;
+			}
+
+			void reset(const clock_t::duration d) noexcept
+			{
+				future_time_ = d + clock_t::now();
+			}
+		private:
+			clock_t::time_point future_time_;
+	};
+
+	export
 	template<class T>
 	struct mutable_wrapper
 	{

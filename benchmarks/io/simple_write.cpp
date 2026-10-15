@@ -4,232 +4,127 @@ import std;
 
 import lib2;
 
-constexpr std::size_t buffer_size{64 * 1024};
+constexpr std::size_t buffer_size {64 * 1024};
+constexpr std::string_view name {"C++isawesome"};
 
-class fstream_insertion final : public lib2::benchmarking::benchmark
+void fstream_insertion(lib2::benchmarking::state& state)
 {
-public:
-    fstream_insertion()
-        : lib2::benchmarking::benchmark{"fstream"} {}
-
-    void setup()
-    {
-        file.open(name());
-        file.rdbuf()->pubsetbuf(buffer, buffer_size);
-    }
-
-    void operator()()
-    {
-        file << "Hello World! My name is " << name() << '\n';
-    }
-
-    void tear_down()
-    {
-        file.close();
-    }
-private:
-    std::ofstream file;
     char buffer[buffer_size];
-};
+    std::ofstream file {"fstream"};
+    file.rdbuf()->pubsetbuf(buffer, buffer_size);
 
-class fprintf_ final : public lib2::benchmarking::benchmark
+    for (auto _ : state)
+    {
+        file << "Hello World! My name is " << name << '\n';
+    }
+}
+
+void fprintf_(lib2::benchmarking::state& state)
 {
-public:
-    fprintf_()
-        : lib2::benchmarking::benchmark{"fprintf"} {}
-
-    void setup()
-    {
-        file = std::fopen(name().c_str(), "w");
-        std::setvbuf(file, buffer, _IOFBF, buffer_size);
-    }
-
-    void operator()()
-    {
-        std::fprintf(file, "Hello World! My name is %s\n", name().c_str());
-    }
-
-    void tear_down()
-    {
-        std::fclose(file);
-    }
-private:
-    std::FILE* file;
     char buffer[buffer_size];
-};
+    auto file {std::fopen("fprintf", "w")};
+    std::setvbuf(file, buffer, _IOFBF, buffer_size);
 
-class fstream_print final : public lib2::benchmarking::benchmark
+    for (auto _ : state)
+    {
+        std::fprintf(file, "Hello World! My name is %s\n", name.data());
+    }
+
+    std::fclose(file);
+}
+
+void fstream_print(lib2::benchmarking::state& state)
 {
-public:
-    fstream_print()
-        : lib2::benchmarking::benchmark{"fstream_print"} {}
-
-    void setup()
-    {
-        file.open(name());
-        file.rdbuf()->pubsetbuf(buffer, buffer_size);
-    }
-
-    void operator()()
-    {
-        std::print(file, "Hello World! My name is {}\n", name());
-    }
-
-    void tear_down()
-    {
-        file.close();
-    }
-private:
-    std::ofstream file;
     char buffer[buffer_size];
-};
+    std::ofstream file {"fstream_print"};
+    file.rdbuf()->pubsetbuf(buffer, buffer_size);
 
-class lib2_fstream_write final : public lib2::benchmarking::benchmark
+    for (auto _ : state)
+    {
+        std::print(file, "Hello World! My name is {}\n", name);
+    }
+}
+
+void lib2_file_write(lib2::benchmarking::state& state)
 {
-public:
-    lib2_fstream_write()
-        : lib2::benchmarking::benchmark{"lib2_fstream_write"} {}
+    lib2::io::buffered_sink<lib2::io::file_sink, buffer_size> file {"lib2_file_write"};
 
-    void setup()
+    for (auto _ : state)
     {
-        file.open(name());
-        file.setbuf(buffer, buffer_size);
+        file.write("Hello World! My name is ");
+        file.write(name);
+        file.put('\n');
     }
+}
 
-    void operator()()
-    {
-        lib2::text_ostream tfile {file};
-        tfile.write("Hello World! My name is ");
-        tfile.write(name());
-        tfile.put('\n');
-    }
-
-    void tear_down()
-    {
-        file.close();
-    }
-private:
-    lib2::ofstream file;
-    std::byte buffer[buffer_size];
-};
-
-class lib2_fstream_fmt final : public lib2::benchmarking::benchmark
+void lib2_file_fmt(lib2::benchmarking::state& state)
 {
-public:
-    lib2_fstream_fmt()
-        : lib2::benchmarking::benchmark{"lib2_fstream_fmt"} {}
+    lib2::io::buffered_sink<lib2::io::file_sink, buffer_size> file {"lib2_file_fmt"};
 
-    void setup()
+    for (auto _ : state)
     {
-        file.open(name());
-        file.setbuf(buffer, buffer_size);
+        lib2::format_to<"Hello World! My name is {}\n">(file, name);
     }
+}
 
-    void operator()()
-    {
-        lib2::format_to<"Hello World! My name is {}\n">(file, name());
-    }
-
-    void tear_down()
-    {
-        file.close();
-    }
-private:
-    lib2::ofstream file;
-    std::byte buffer[buffer_size];
-};
-
-class lib2_fstream_rt_fmt final : public lib2::benchmarking::benchmark
+void lib2_file_rt_fmt(lib2::benchmarking::state& state)
 {
-public:
-    lib2_fstream_rt_fmt()
-        : lib2::benchmarking::benchmark{"lib2_fstream_rt_fmt"} {}
+    lib2::io::buffered_sink<lib2::io::file_sink, buffer_size> file {"lib2_file_rt_fmt"};
 
-    void setup()
+    for (auto _ : state)
     {
-        file.open(name());
-        file.setbuf(buffer, buffer_size);
+        lib2::format_to(file, "Hello World! My name is {}\n", name);
     }
+}
 
-    void operator()()
-    {
-        lib2::format_to(file, "Hello World! My name is {}\n", name());
-    }
-
-    void tear_down()
-    {
-        file.close();
-    }
-private:
-    lib2::ofstream file;
-    std::byte buffer[buffer_size];
-};
-
-class lib2_fstream_vfmt final : public lib2::benchmarking::benchmark
+void lib2_file_vfmt(lib2::benchmarking::state& state)
 {
-public:
-    lib2_fstream_vfmt()
-        : lib2::benchmarking::benchmark{"lib2_fstream_vfmt"} {}
+    lib2::io::buffered_sink<lib2::io::file_sink, buffer_size> file {"lib2_file_vfmt"};
 
-    void setup()
+    for (auto _ : state)
     {
-        file.open(name());
-        file.setbuf(buffer, buffer_size);
+        lib2::vformat_to(file, "Hello World! My name is {}\n", lib2::make_format_args(name));
     }
+}
 
-    void operator()()
-    {
-        lib2::vformat_to(file, "Hello World! My name is {}\n", lib2::make_format_args(name()));
-    }
+// class lib2_async_fstream : public lib2::benchmarking::benchmark
+// {
+// public:
+//     lib2_async_fstream()
+//         : lib2::benchmarking::benchmark{"lib2_async_fstream"} {}
 
-    void tear_down()
-    {
-        file.close();
-    }
-private:
-    lib2::ofstream file;
-    std::byte buffer[buffer_size];
-};
+//     void setup() final
+//     {
+//         file.open(name());
+//         file.setbuf(buffer_size);
+//     }
 
-class lib2_async_fstream : public lib2::benchmarking::benchmark
-{
-public:
-    lib2_async_fstream()
-        : lib2::benchmarking::benchmark{"lib2_async_fstream"} {}
+//     void operator()() final
+//     {
+//         lib2::format_to<"Hello World! My name is {}\n">(file, name());
+//     }
 
-    void setup() final
-    {
-        file.open(name());
-        file.setbuf(buffer_size);
-    }
-
-    void operator()() final
-    {
-        lib2::format_to<"Hello World! My name is {}\n">(file, name());
-    }
-
-    void tear_down() final
-    {
-        file.close();
-    }
-private:
-    lib2::async_ofstream file;
-};
+//     void tear_down() final
+//     {
+//         file.close();
+//     }
+// private:
+//     lib2::async_ofstream file;
+// };
 
 int main()
 {
-    const lib2::benchmarking::benchmarking_min_time ctx {std::chrono::seconds{8}};
+    constexpr lib2::benchmarking::benchmarking_min_time ctx {std::chrono::seconds{8}};
 
-    fstream_insertion b1;
-    fprintf_ b2;
-    fstream_print b3;
-    lib2_fstream_write b4;
-    lib2_fstream_fmt b5;
-    lib2_async_fstream b6;
-    lib2_fstream_rt_fmt b7;
-    lib2_fstream_vfmt b8;
+    lib2::benchmarking::suite suite;
 
-    lib2::benchmarking::print_benchmarks(ctx,
-        b1, b2, b3, b4, b5, /*b6,*/ b7, b8
-    );
+    suite.add("fstream", &fstream_insertion);
+    suite.add("fprintf_", &fprintf_);
+    suite.add("fstream_print", &fstream_print);
+    suite.add("lib2_file_write", &lib2_file_write);
+    suite.add("lib2_file_fmt", &lib2_file_fmt);
+    suite.add("lib2_file_rt_fmt", &lib2_file_rt_fmt);
+    suite.add("lib2_file_vfmt", &lib2_file_vfmt);
+
+    lib2::benchmarking::print_benchmarks(ctx, suite);
 }

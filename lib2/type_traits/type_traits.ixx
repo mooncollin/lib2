@@ -20,11 +20,9 @@ namespace lib2
 	template<typename...>
 	struct is_unique;
 
-	export
 	template<>
 	struct is_unique<> : std::true_type {};
 
-	export
 	template<typename F, typename... T>
 	struct is_unique<F, T...> : std::conjunction<is_unique<T...>, std::negation<is_any_of<F, T...>>> {};
 
@@ -36,7 +34,6 @@ namespace lib2
 	template<class Type, template<typename...> class Template>
 	struct is_specialization : std::false_type {};
 
-	export
 	template<template<typename...> class Template, class... Types>
 	struct is_specialization<Template<Types...>, Template> : std::true_type {};
 

@@ -1,59 +1,38 @@
 export module lib2.scan;
 export import :scan_error;
-export import :scanner;
-export import :basic_scan_parse_context;
-export import :basic_scan_arg;
-export import :basic_scan_context;
+export import :utility;
+export import :context;
+export import :parsers;
+export import :string;
 
 import std;
 
+import lib2.strings;
+import lib2.io;
+
 namespace lib2
 {
-    template<std::input_iterator I, std::sentinel_for<I> S, class CharT, class... Args>
-    I do_scan(const std::locale& loc, I begin, const S end, const std::basic_string_view<CharT> fmt, Args&... args)
+    std::expected<void, scan_error> do_scan(text_istream& is, scan_context& ctx)
     {
-        const auto& facet {std::use_facet<std::ctype<CharT>>(loc)};
+        auto fmt_it {ctx.begin()};
 
-        using ctx_t = basic_scan_context<I, S, CharT>;
-
-        auto arg_store {make_scan_args<ctx_t>(args...)};
-        basic_scan_args<ctx_t> scan_args {arg_store};
-        basic_scan_parse_context<CharT> parse_ctx {fmt};
-
-        auto fmt_it {fmt.begin()};
-
-        while (fmt_it != fmt.end() && begin != end)
+        while (is.get() && fmt_it != ctx.end())
         {
             if (*fmt_it != '{')
             {
-                if (facet.is(std::ctype_base::space, *begin) && facet.is(std::ctype_base::space, *fmt_it))
+                if (is_ascii_space(*is.get()) && is_ascii_space(*fmt_it))
                 {
-                    ++begin;
-                    while (begin != end)
-                    {
-                        if (!facet.is(std::ctype_base::space, *begin))
-                        {
-                            break;
-                        }
-                        ++begin;
-                    }
-                    while (fmt_it != fmt.end())
-                    {
-                        if (!facet.is(std::ctype_base::space, *fmt_it))
-                        {
-                            break;
-                        }
-                        ++fmt_it;
-                    }
+                    is >> ws;
+                    fmt_it = std::find_if_not(fmt_it, ctx.end(), is_ascii_space);
                     continue;
                 }
 
-                if (*begin != *fmt_it)
+                if (*is.get() != *fmt_it)
                 {
-                    throw scan_pattern_not_matched{std::format("Pattern not matched: '{}' != '{}'", *begin, *fmt_it)};
+                    return std::unexpected<scan_error>{std::in_place, scan_error::invalid_literal, "Pattern not matched"};
                 }
 
-                ++begin;
+                is.bump();
                 ++fmt_it;
                 continue;
             }
@@ -61,12 +40,12 @@ namespace lib2
             ++fmt_it;
             if (*fmt_it == '{')
             {
-                if (*begin != '{')
+                if (is.get() != '{')
                 {
-                    throw scan_pattern_not_matched{std::format("Pattern not matched: '{}' != '{{'", *begin)};
+                    return std::unexpected<scan_error>{std::in_place, scan_error::invalid_literal, "Pattern not matched"};
                 }
 
-                ++begin;
+                is.bump();
                 ++fmt_it;
                 continue;
             }
@@ -86,16 +65,16 @@ namespace lib2
                 case '8':
                 case '9':
                 {
-                    const std::string_view sint {fmt_it, fmt.end()};
+                    const std::string_view sint {fmt_it, ctx.end()};
                     const auto conv_result {std::from_chars(sint.data(), sint.data() + sint.size(), arg_idx)};
                     if (conv_result.ec != std::errc{})
                     {
                         throw scan_parse_error{"Invalid format string"};
                     }
-                    parse_ctx.check_arg_id(arg_idx);
+                    ctx.check_arg_id(arg_idx);
                     fmt_it += conv_result.ptr - sint.data();
 
-                    if (fmt_it == fmt.end())
+                    if (fmt_it == ctx.end())
                     {
                         throw scan_parse_error{"Invalid format string"};
                     }
@@ -111,356 +90,88 @@ namespace lib2
                 case ':':
                     ++fmt_it;
                 case '}':
-                    arg_idx = parse_ctx.next_arg_id();
+                    arg_idx = ctx.next_arg_id();
                     break;
                 default:
                     throw scan_parse_error{"Invalid format string"};
             }
 
-            const auto end_curly {std::find(fmt_it, fmt.end(), '}')};
-            if (end_curly == fmt.end())
+            ctx.advance_to(fmt_it);
+            auto arg {ctx.arg(arg_idx)};
+            const auto result {arg.scan(is, ctx)};
+            if (!result)
             {
-                throw scan_parse_error{"Unmatched '{' in format string"};
+                return std::unexpected{result.error()};
             }
 
-            parse_ctx.advance_to(fmt_it);
+            if (ctx.begin() == ctx.end() || *ctx.begin() != '}')
+            {
+                throw scan_parse_error{"Unparsed format"};
+            }
 
-            basic_scan_context<I, S, CharT> ctx {begin, end, scan_args, loc};
-            auto arg {ctx.arg(arg_idx)};
-            begin = arg.scan(parse_ctx, ctx);
-            fmt_it = end_curly;
+            fmt_it = ctx.begin();
             ++fmt_it;
         }
 
-        if (fmt_it != fmt.end() && begin == end)
+        if (fmt_it != ctx.end() && is.get())
         {
-            throw scan_pattern_not_matched{"Unexpected end of file"};
+            return std::unexpected<scan_error>{std::in_place, scan_error::end_of_input, "Unexpected end of input"};
         }
 
-        return begin;
+        return {};
     }
 
     export
-    template<std::input_iterator I, std::sentinel_for<I> S, class... Args>
-    auto scan(const std::locale& loc, I begin, S end, const std::string_view fmt, Args&... args)
+    template<class... Args>
+    std::expected<void, scan_error> scan_to(text_istream& is, const std::string_view fmt, Args&... args)
     {
-        return do_scan(loc, std::move(begin), std::move(end), fmt, args...);
+        auto arg_store {make_scan_args(args...)};
+        scan_context ctx {fmt, arg_store};
+        return do_scan(is, ctx);
     }
 
     export
-    template<std::input_iterator I, std::sentinel_for<I> S, class... Args>
-    auto scan(const std::locale& loc, I begin, S end, const std::wstring_view fmt, Args&... args)
+    template<class... Args>
+    std::expected<void, scan_error> scan_to(text_istream& is, const std::locale& loc, const std::string_view fmt, Args&... args)
     {
-        return do_scan(loc, std::move(begin), std::move(end), fmt, args...);
+        auto arg_store {make_scan_args(args...)};
+        scan_context ctx {fmt, arg_store, loc};
+        return do_scan(is, ctx);
     }
 
     export
-    template<std::ranges::input_range R, class... Args>
-    auto scan(const std::locale& loc, R&& r, const std::string_view fmt, Args&... args)
+    template<class... Args>
+    std::expected<std::tuple<Args...>, scan_error> scan(text_istream& is, const std::string_view fmt)
     {
-        return scan(loc, std::ranges::begin(r), std::ranges::end(r), fmt, args...);
+        std::tuple<Args...> args;
+
+        const auto result {std::apply([&](auto&... as) {
+            return scan_to(is, fmt, as...);
+        }, args)};
+        
+        if (result)
+        {
+            return args;
+        }
+
+        return std::unexpected{result.error()};
     }
 
     export
-    template<std::ranges::input_range R, class... Args>
-    auto scan(const std::locale& loc, R&& r, const std::wstring_view fmt, Args&... args)
+    template<class... Args>
+    std::expected<std::tuple<Args...>, scan_error> scan(text_istream& is, const std::locale& loc, const std::string_view fmt)
     {
-        return scan(loc, std::ranges::begin(r), std::ranges::end(r), fmt, args...);
+        std::tuple<Args...> args;
+
+        const auto result {std::apply([&](auto&... as) {
+            return scan_to(is, loc, fmt, as...);
+        }, args)};
+        
+        if (result)
+        {
+            return args;
+        }
+
+        return std::unexpected{result.error()};
     }
-
-    export
-    template<std::input_iterator I, std::sentinel_for<I> S, class... Args>
-    auto scan(I begin, S end, const std::string_view fmt, Args&... args)
-    {
-        return scan({}, std::move(begin), std::move(end), fmt, args...);
-    }
-
-    export
-    template<std::input_iterator I, std::sentinel_for<I> S, class... Args>
-    auto scan(I begin, S end, const std::wstring_view fmt, Args&... args)
-    {
-        return scan({}, std::move(begin), std::move(end), fmt, args...);
-    }
-
-    export
-    template<std::ranges::input_range R, class... Args>
-    auto scan(R&& r, const std::string_view fmt, Args&... args)
-    {
-        return scan(std::ranges::begin(r), std::ranges::end(r), fmt, args...);
-    }
-
-    export
-    template<std::ranges::input_range R, class... Args>
-    auto scan(R&& r, const std::wstring_view fmt, Args&... args)
-    {
-        return scan(std::ranges::begin(r), std::ranges::end(r), fmt, args...);
-    }
-
-    template<class CharT>
-    struct base_parser
-    {
-    public:
-        template<class ParseCtx>
-        constexpr auto parse(ParseCtx& ctx) const noexcept
-        {
-            return ctx.begin();
-        }
-    protected:
-        template<class ScanCtx>
-        auto skipws(ScanCtx& ctx) const
-        {
-            const auto& facet {std::use_facet<std::ctype<CharT>>(ctx.locale())};
-
-            auto it {ctx.begin()};
-            while (it != ctx.end())
-            {
-                if (!facet.is(std::ctype_base::space, *it))
-                {
-                    break;
-                }
-                ++it;
-            }
-
-            return it;
-        }
-    };
-
-    template<class CharT>
-    struct locale_parser : base_parser<CharT>
-    {
-    public:
-        template<class ParseCtx>
-        constexpr auto parse(ParseCtx& ctx) noexcept
-        {
-            auto it {ctx.begin()};
-            if (it != ctx.end())
-            {
-                if (*it == 'L')
-                {
-                    ++it;
-                    use_local = true;
-                }
-            }
-
-            return it;
-        }
-    protected:
-        bool use_local {false};
-    };
-
-    template<class CharT>
-    struct width_parser : base_parser<CharT>
-    {
-    public:
-        template<class ParseCtx>
-        constexpr auto parse(ParseCtx& ctx) noexcept
-        {
-            auto it {ctx.begin()};
-            if (it != ctx.end())
-            {
-                switch (*it)
-                {
-                    case '1':
-                    case '2':
-                    case '3':
-                    case '4':
-                    case '5':
-                    case '6':
-                    case '7':
-                    case '8':
-                    case '9':
-                        width = *it - '0';
-                        ++it;
-                        while (it != ctx.end())
-                        {
-                            bool stop {false};
-                            switch (*it)
-                            {
-                                case '0':
-                                case '1':
-                                case '2':
-                                case '3':
-                                case '4':
-                                case '5':
-                                case '6':
-                                case '7':
-                                case '8':
-                                case '9':
-                                    width *= 10;
-                                    width += *it - '0';
-                                    break;
-                                default:
-                                    stop = true;
-                            }
-                            if (stop)
-                            {
-                                break;
-                            }
-                            ++it;
-                        }
-                }
-            }
-            
-            return it;
-        }
-    protected:
-        std::size_t width {0};
-    };
-
-    template<class CharT>
-    struct string_parser : width_parser<CharT>
-    {
-    public:
-        template<class ParseCtx>
-        auto parse(ParseCtx& ctx)
-        {
-            auto it {width_parser<CharT>::parse(ctx)};
-
-            if (it != ctx.end())
-            {
-                switch (*it)
-                {
-                    case 'c':
-                        skipws_ = false;
-                        ++it;
-                }
-            }
-
-            if (!skipws_ && this->width == 0)
-            {
-                throw scan_parse_error{"Must specify a maximum width when not skipping space"};
-            }
-            return it;
-        }
-    protected:
-        bool skipws_ {true};
-    };
-
-    export
-    template<class CharT>
-    struct scanner<CharT, CharT> : base_parser<CharT>
-    {
-        template<class ScanCtx>
-        auto scan(CharT& val, ScanCtx& ctx) const
-        {
-            auto iter {ctx.begin()};
-
-            if (iter == ctx.end())
-            {
-                throw std::invalid_argument{"EOF"};
-            }
-
-            val = *iter++;
-            return iter;
-        }
-    };
-
-    export
-    template<class CharT, std::size_t N>
-    struct scanner<CharT[N], CharT> : public string_parser<CharT>
-    {
-        template<class ScanCtx>
-        auto scan(CharT(&val)[N], ScanCtx& ctx) const
-        {
-            const auto& facet {std::use_facet<std::ctype<CharT>>(ctx.locale())};
-
-            auto it {ctx.begin()};
-            if (this->skipws_)
-            {
-                it = this->skipws(ctx);
-            }
-
-            std::size_t current_width {0};
-            auto ptr {val};
-
-            while (it != ctx.end() && ptr != (val + N - 1) && (this->width == 0 || current_width < this->width))
-            {
-                if (this->skipws_ && facet.is(std::ctype_base::space, *it))
-                {
-                    break;
-                }
-
-                *ptr = *it;
-                ++ptr;
-                ++it;
-                ++current_width;
-            }
-
-            *ptr = CharT{};
-
-            return it;
-        }
-    };
-
-    export
-    template<class CharT, class Traits, class Allocator>
-    struct scanner<std::basic_string<CharT, Traits, Allocator>, CharT> : public string_parser<CharT>
-    {
-        template<class ScanCtx>
-        auto scan(std::basic_string<CharT, Traits, Allocator>& val, ScanCtx& ctx) const
-        {
-            const auto& facet {std::use_facet<std::ctype<CharT>>(ctx.locale())};
-            val.clear();
-
-            auto it {ctx.begin()};
-            if (this->skipws_)
-            {
-                it = this->skipws(ctx);
-            }
-
-            std::size_t current_width {0};
-
-            while (it != ctx.end() && (this->width == 0 || current_width < this->width))
-            {
-                if (this->skipws_ && facet.is(std::ctype_base::space, *it))
-                {
-                    break;
-                }
-
-                val.push_back(*it);
-                ++it;
-                ++current_width;
-            }
-
-            return it;
-        }
-    };
-
-    export
-    template<class CharT, class Traits>
-    struct scanner<std::basic_string_view<CharT, Traits>, CharT> : public string_parser<CharT>
-    {
-        template<class ScanCtx>
-        auto scan(std::basic_string_view<CharT, Traits>& val, ScanCtx& ctx) const
-        {
-            static_assert(std::contiguous_iterator<typename ScanCtx::iterator>, "Scan iterator must be contiguous to scan std::string_view");
-
-            const auto& facet {std::use_facet<std::ctype<CharT>>(ctx.locale())};
-            val = {};
-
-            auto it {ctx.begin()};
-            if (this->skipws_)
-            {
-                it = this->skipws(ctx);
-            }
-            const auto begin {it};
-
-            std::size_t current_width {0};
-
-            while (it != ctx.end() && (this->width == 0 || current_width < this->width))
-            {
-                if (this->skipws_ && facet.is(std::ctype_base::space, *it))
-                {
-                    break;
-                }
-
-                ++it;
-                ++current_width;
-            }
-
-            val = {begin, it};
-
-            return it;
-        }
-    };
 }

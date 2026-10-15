@@ -2,76 +2,50 @@ import std;
 
 import lib2;
 
-class write_benchmark : public lib2::benchmarking::benchmark
-{
-public:
-    using lib2::benchmarking::benchmark::benchmark;
-protected:
-    static constexpr std::string_view msg {"Hello, there! I hope this string is long enough, don't you?"};
-    static inline const char* const msg_literal {"Hello, there! I hope this string is long enough, don't you?"};
-};
+static constexpr std::string_view msg {"Hello, there! I hope this string is long enough, don't you?"};
+static inline const char* const msg_literal {"Hello, there! I hope this string is long enough, don't you?"};
 
-class ostringstream_default_construct_benchmark : public lib2::benchmarking::benchmark
-{
-public:
-    ostringstream_default_construct_benchmark()
-        : lib2::benchmarking::benchmark{"std::ostringstream"} {}
 
-    void operator()() final
+void ostringstream_default_construct_benchmark(lib2::benchmarking::state& state)
+{
+    for (auto _ : state)
     {
         std::ostringstream ss;
         lib2::benchmarking::do_not_optimize(ss);
     }
-};
+}
 
-class stringbuf_default_construct_benchmark : public lib2::benchmarking::benchmark
+void stringbuf_default_construct_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    stringbuf_default_construct_benchmark()
-        : lib2::benchmarking::benchmark{"std::stringbuf"} {}
-
-    void operator()() final
+    for (auto _ : state)
     {
         std::stringbuf sbuf {std::ios_base::out};
         lib2::benchmarking::do_not_optimize(sbuf);
     }
-};
+}
 
-class string_default_construct_benchmark : public lib2::benchmarking::benchmark
+void string_default_construct_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    string_default_construct_benchmark()
-        : lib2::benchmarking::benchmark{"std::string"} {}
-
-    void operator()() final
+    for (auto _ : state)
     {
         std::string str;
         lib2::benchmarking::do_not_optimize(str);
     }
-};
+}
 
-class lib2_ostringstream_default_construct_benchmark : public lib2::benchmarking::benchmark
+void lib2_string_sink_default_construct_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    lib2_ostringstream_default_construct_benchmark()
-        : lib2::benchmarking::benchmark{"lib2::ostringstream"} {}
-
-    void operator()() final
+    for (auto _ : state)
     {
-        lib2::ostringstream ss;
+        lib2::io::string_sink ss;
         lib2::benchmarking::do_not_optimize(ss);
     }
-};
+}
 
 
-
-class ostringstream_init_write_benchmark : public write_benchmark
+void ostringstream_init_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    ostringstream_init_write_benchmark()
-        : write_benchmark{"std::ostringstream"} {}
-
-    void operator()() final
+    for (auto _ : state)
     {
         std::ostringstream ss;
         ss.write(msg.data(), msg.size());
@@ -79,15 +53,11 @@ public:
         const auto view {ss.view()};
         lib2::benchmarking::do_not_optimize(view);
     }
-};
+}
 
-class stringbuf_init_write_benchmark : public write_benchmark
+void stringbuf_init_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    stringbuf_init_write_benchmark()
-        : write_benchmark{"std::stringbuf"} {}
-
-    void operator()() final
+    for (auto _ : state)
     {
         std::stringbuf sbuf {std::ios_base::out};
         sbuf.sputn(msg.data(), msg.size());
@@ -95,281 +65,176 @@ public:
         const auto view {sbuf.view()};
         lib2::benchmarking::do_not_optimize(view);
     }
-};
+}
 
-class string_init_write_benchmark : public write_benchmark
+void string_init_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    string_init_write_benchmark()
-        : write_benchmark{"std::string"} {}
-
-    void operator()() final
+    for (auto _ : state)
     {
         std::string str;
         str.append(msg);
-        lib2::benchmarking::do_not_optimize(std::string_view{str.data(), str.size()});
-    }
-};
 
-class lib2_ostringstream_init_write_benchmark : public write_benchmark
+        lib2::benchmarking::do_not_optimize(str);
+    }
+}
+
+void lib2_string_sink_init_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    lib2_ostringstream_init_write_benchmark()
-        : write_benchmark{"lib2::ostringstream"} {}
-
-    void operator()() final
+    for (auto _ : state)
     {
-        lib2::ostringstream ss;
-        ss.write(msg.data(), msg.size());
+        lib2::io::string_sink ss;
+        ss.write(msg);
 
-        const auto view {ss.view()};
-        lib2::benchmarking::do_not_optimize(view);
+        lib2::benchmarking::do_not_optimize(ss.str);
     }
-};
+}
 
-class ostringstream_char_write_benchmark : public lib2::benchmarking::benchmark
+
+void ostringstream_char_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    ostringstream_char_write_benchmark()
-        : lib2::benchmarking::benchmark{"std::ostringstream"} {}
+    std::ostringstream ss;
 
-    void setup()
-    {
-        ss.str({});
-    }
-
-    void operator()() final
+    for (auto _ : state)
     {
         ss.put('H');
     }
-private:
-    std::ostringstream ss {std::ios_base::out};
-};
+}
 
-class stringbuf_char_write_benchmark : public lib2::benchmarking::benchmark
+void stringbuf_char_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    stringbuf_char_write_benchmark()
-        : lib2::benchmarking::benchmark{"std::stringbuf"} {}
+    std::stringbuf sbuf {std::ios_base::out};
 
-    void setup()
-    {
-        sbuf.str({});
-    }
-
-    void operator()() final
+    for (auto _ : state)
     {
         sbuf.sputc('H');
     }
-private:
-    std::stringbuf sbuf {std::ios_base::out};
-};
+}
 
-class string_char_write_benchmark : public lib2::benchmarking::benchmark
+void string_char_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    string_char_write_benchmark()
-        : lib2::benchmarking::benchmark{"std::string"} {}
+    std::string str;
 
-    void setup()
-    {
-        str.clear();
-    }
-
-    void operator()() final
+    for (auto _ : state)
     {
         str.push_back('H');
     }
-private:
-    std::string str;
-};
+}
 
-class lib2_ostringstream_char_write_benchmark : public lib2::benchmarking::benchmark
+void lib2_string_sink_char_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    lib2_ostringstream_char_write_benchmark()
-        : lib2::benchmarking::benchmark{"lib2::ostringstream"} {}
+    lib2::io::string_sink ss;
 
-    void setup()
-    {
-        ss.str({});
-    }
-
-    void operator()() final
+    for (auto _ : state)
     {
         ss.put('H');
     }
-private:
-    lib2::ostringstream ss;
-};
+}
 
-class ostringstream_string_write_benchmark : public write_benchmark
+
+void ostringstream_string_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    ostringstream_string_write_benchmark()
-        : write_benchmark{"std::ostringstream"} {}
+    std::ostringstream ss;
 
-    void setup()
-    {
-        ss.str({});
-    }
-
-    void operator()() final
+    for (auto _ : state)
     {
         ss.write(msg.data(), msg.size());
     }
-private:
-    std::ostringstream ss {std::ios_base::out};
-};
+}
 
-class stringbuf_string_write_benchmark : public write_benchmark
+void stringbuf_string_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    stringbuf_string_write_benchmark()
-        : write_benchmark{"std::stringbuf"} {}
+    std::stringbuf sbuf {std::ios_base::out};
 
-    void setup()
-    {
-        sbuf.str({});
-    }
-
-    void operator()() final
+    for (auto _ : state)
     {
         sbuf.sputn(msg.data(), msg.size());
     }
-private:
-    std::stringbuf sbuf {std::ios_base::out};
-};
+}
 
-class string_string_write_benchmark : public write_benchmark
+void string_string_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    string_string_write_benchmark()
-        : write_benchmark{"std::string"} {}
+    std::string str;
 
-    void setup()
-    {
-        str.clear();
-    }
-
-    void operator()() final
+    for (auto _ : state)
     {
         str.append(msg);
     }
-private:
-    std::string str;
-};
+}
 
-class lib2_ostringstream_string_write_benchmark : public write_benchmark
+void lib2_string_sink_string_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    lib2_ostringstream_string_write_benchmark()
-        : write_benchmark{"lib2::ostringstream"} {}
+    lib2::io::string_sink ss;
 
-    void setup()
+    for (auto _ : state)
     {
-        ss.str({});
+        ss.write(msg);
     }
-
-    void operator()() final
-    {
-        ss.write(msg.data(), msg.size());
-    }
-private:
-    lib2::ostringstream ss;
-};
+}
 
 
-class ostringstream_string_literal_write_benchmark : public write_benchmark
+void ostringstream_string_literal_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    ostringstream_string_literal_write_benchmark()
-        : write_benchmark{"std::ostringstream"} {}
+    std::ostringstream ss;
 
-    void setup()
-    {
-        ss.str({});
-    }
-
-    void operator()() final
+    for (auto _ : state)
     {
         ss << msg_literal;
     }
-private:
-    std::ostringstream ss {std::ios_base::out};
-};
+}
 
-class string_string_literal_write_benchmark : public write_benchmark
+void string_string_literal_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    string_string_literal_write_benchmark()
-        : write_benchmark{"std::string"} {}
+    std::string str;
 
-    void setup()
-    {
-        str.clear();
-    }
-
-    void operator()() final
+    for (auto _ : state)
     {
         str += msg_literal;
     }
-private:
-    std::string str;
-};
+}
 
-class lib2_ostringstream_string_literal_write_benchmark : public write_benchmark
+void lib2_string_sink_string_literal_write_benchmark(lib2::benchmarking::state& state)
 {
-public:
-    lib2_ostringstream_string_literal_write_benchmark()
-        : write_benchmark{"lib2::ostringstream"} {}
+    lib2::io::string_sink ss;
 
-    void setup()
-    {
-        ss.str({});
-    }
-
-    void operator()() final
+    for (auto _ : state)
     {
         ss.write(msg_literal);
     }
-private:
-    lib2::ostringstream ss;
-};
+}
 
 int main()
 {
-    const lib2::benchmarking::benchmarking_min_time ctx {std::chrono::seconds{5}};
-    const lib2::benchmarking::benchmarking_iterations ctx2 {30'000'000};
+    constexpr lib2::benchmarking::benchmarking_min_time ctx {std::chrono::seconds{5}};
+    constexpr lib2::benchmarking::benchmarking_iterations ctx2 {30'000'000};
 
-    lib2::benchmarking::benchmark_suite default_construct;
-    default_construct.add_benchmark<ostringstream_default_construct_benchmark>();
-    default_construct.add_benchmark<stringbuf_default_construct_benchmark>();
-    default_construct.add_benchmark<string_default_construct_benchmark>();
-    default_construct.add_benchmark<lib2_ostringstream_default_construct_benchmark>();
+    lib2::benchmarking::suite default_construct;
+    default_construct.add("std::ostringstream", &ostringstream_default_construct_benchmark);
+    default_construct.add("std::stringbuf", &stringbuf_default_construct_benchmark);
+    default_construct.add("std::string", &string_default_construct_benchmark);
+    default_construct.add("lib2::io::string_sink", &lib2_string_sink_default_construct_benchmark);
 
-    lib2::benchmarking::benchmark_suite initialize_and_write;
-    initialize_and_write.add_benchmark<ostringstream_init_write_benchmark>();
-    initialize_and_write.add_benchmark<stringbuf_init_write_benchmark>();
-    initialize_and_write.add_benchmark<string_init_write_benchmark>();
-    initialize_and_write.add_benchmark<lib2_ostringstream_init_write_benchmark>();
+    lib2::benchmarking::suite initialize_and_write;
+    initialize_and_write.add("std::ostringstream", &ostringstream_init_write_benchmark);
+    initialize_and_write.add("std::stringbuf", &stringbuf_init_write_benchmark);
+    initialize_and_write.add("std::string", &string_init_write_benchmark);
+    initialize_and_write.add("lib2::io::string_sink", &lib2_string_sink_init_write_benchmark);
 
-    lib2::benchmarking::benchmark_suite char_write;
-    char_write.add_benchmark<ostringstream_char_write_benchmark>();
-    char_write.add_benchmark<stringbuf_char_write_benchmark>();
-    char_write.add_benchmark<string_char_write_benchmark>();
-    char_write.add_benchmark<lib2_ostringstream_char_write_benchmark>();
+    lib2::benchmarking::suite char_write;
+    char_write.add("std::ostringstream", &ostringstream_char_write_benchmark);
+    char_write.add("std::stringbuf", &stringbuf_char_write_benchmark);
+    char_write.add("std::string", &string_char_write_benchmark);
+    char_write.add("lib2::io::string_sink", &lib2_string_sink_char_write_benchmark);
 
-    lib2::benchmarking::benchmark_suite string_write;
-    string_write.add_benchmark<ostringstream_string_write_benchmark>();
-    string_write.add_benchmark<stringbuf_string_write_benchmark>();
-    string_write.add_benchmark<string_string_write_benchmark>();
-    string_write.add_benchmark<lib2_ostringstream_string_write_benchmark>();
+    lib2::benchmarking::suite string_write;
+    string_write.add("std::ostringstream", &ostringstream_string_write_benchmark);
+    string_write.add("std::stringbuf", &stringbuf_string_write_benchmark);
+    string_write.add("std::string", &string_string_write_benchmark);
+    string_write.add("lib2::io::string_sink", &lib2_string_sink_string_write_benchmark);
 
-    lib2::benchmarking::benchmark_suite string_literal_write;
-    string_literal_write.add_benchmark<ostringstream_string_literal_write_benchmark>();
-    string_literal_write.add_benchmark<string_string_literal_write_benchmark>();
-    string_literal_write.add_benchmark<lib2_ostringstream_string_literal_write_benchmark>();
+    lib2::benchmarking::suite string_literal_write;
+    string_literal_write.add("std::ostringstream", &ostringstream_string_literal_write_benchmark);
+    string_literal_write.add("std::string", &string_string_literal_write_benchmark);
+    string_literal_write.add("lib2::io::string_sink", &lib2_string_sink_string_literal_write_benchmark);
 
     lib2::print<"Default construction:\n">();
     lib2::benchmarking::print_benchmarks(ctx, default_construct);

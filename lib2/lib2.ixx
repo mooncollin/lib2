@@ -12,5 +12,7 @@ export import lib2.err;
 export import lib2.shared;
 export import lib2.io;
 export import lib2.fmt;
+export import lib2.csv;
+export import lib2.json;
 export import lib2.test;
 export import lib2.benchmarking;

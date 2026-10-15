@@ -6,76 +6,47 @@ import lib2;
 namespace lib2::tests::io
 {
     export
-    class ostream_char_test : public lib2::test::test_case
+    void ostream_char()
     {
-    public:
-        ostream_char_test()
-            : lib2::test::test_case{"ostream_char"} {}
+        lib2::ostringstream ss;
 
-        void operator()() final
-        {
-            lib2::ostringstream ss;
+        ss.put('H');
+        ss.put('E');
+        ss.put('L');
+        ss.put('L');
+        ss.put('O');
+        ss.put('!');
 
-            ss.put('H');
-            ss.put('E');
-            ss.put('L');
-            ss.put('L');
-            ss.put('O');
-            ss.put('!');
-
-            lib2::test::assert_equal(ss.view(), "HELLO!");
-        }
-    };
+        lib2::test::assert_equal(ss.view(), "HELLO!");
+    }
 
     export
-    class ostream_string_literal_test : public lib2::test::test_case
+    void ostream_string_literal()
     {
-    public:
-        ostream_string_literal_test()
-            : lib2::test::test_case{"ostream_string_literal"} {}
+        lib2::ostringstream ss;
 
-        void operator()() final
-        {
-            lib2::ostringstream ss;
+        ss.write("Jello!");
 
-            ss.write("Jello!");
-
-            lib2::test::assert_equal(ss.view(), "Jello!");
-        }
-    };
+        lib2::test::assert_equal(ss.view(), "Jello!");
+    }
 
     export
-    class ostream_string_test : public lib2::test::test_case
+    void ostream_string()
     {
-    public:
-        ostream_string_test()
-            : lib2::test::test_case{"ostream_string"} {}
+        lib2::ostringstream ss;
 
-        void operator()() final
-        {
-            lib2::ostringstream ss;
+        ss.write(std::string{"Jello!"});
 
-            ss.write(std::string{"Jello!"});
+        lib2::test::assert_equal(ss.view(), "Jello!");
+    }
 
-            lib2::test::assert_equal(ss.view(), "Jello!");
-        }
-    };
+    export
+    void ostream_istream()
+    {
+        lib2::istringstream is{"Howdy!"};
+        lib2::ostringstream os;
 
-    // export
-    // class ostream_istream_test : public lib2::test::test_case
-    // {
-    // public:
-    //     ostream_istream_test()
-    //         : lib2::test::test_case{"ostream_istream"} {}
-
-    //     void operator()() final
-    //     {
-    //         lib2::istringstream is{"Howdy!"};
-    //         lib2::ostringstream os;
-
-    //         os << is;
-
-    //         lib2::test::assert_equal(os.view(), "Howdy!");
-    //     }
-    // };
+        lib2::test::assert_equal(is.read(os, 10), 6);
+        lib2::test::assert_equal(os.view(), "Howdy!");
+    }
 }

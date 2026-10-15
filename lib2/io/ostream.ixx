@@ -229,29 +229,29 @@ namespace lib2
         constexpr text_ostream(ostream& stream) noexcept
             : stream{stream} {}
 
-        constexpr inline void put(const char ch)
+        inline void put(const char ch)
         {
             stream.put(std::byte(ch));
         }
 
-        constexpr inline void write(const char* const data, const ostream::size_type count)
+        inline void write(const char* const data, const ostream::size_type count)
         {
             stream.write(reinterpret_cast<const std::byte*>(data), count);
         }
 
-        constexpr inline void write(const std::string_view str)
+        inline void write(const std::string_view str)
         {
             write(str.data(), str.size());
         }
 
-        constexpr inline void fill(const char ch, const ostream::size_type count)
+        inline void fill(const char ch, const ostream::size_type count)
         {
             stream.fill(std::byte(ch), count);
         }
 
         template<class F>
             requires(std::is_invocable_r_v<char*, F, char*, char*>)
-        constexpr inline ostream::size_type produce(F&& f) noexcept(std::is_nothrow_invocable_v<F, char*, char*>)
+        inline ostream::size_type produce(F&& f) noexcept(std::is_nothrow_invocable_v<F, char*, char*>)
         {
             return stream.produce([&](const auto beg, const auto end) {
                 return reinterpret_cast<char*>(std::invoke(std::forward<F>(f), reinterpret_cast<char*>(beg), reinterpret_cast<char*>(end)));

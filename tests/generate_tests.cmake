@@ -8,6 +8,6 @@ list(REMOVE_ITEM test_list "")
 file(WRITE ${OUTPUT_FILE}  "# Dynamically generated tests\n")
 foreach(test_name IN LISTS test_list)
     file(APPEND "${OUTPUT_FILE}"
-        "add_test(NAME ${test_name} COMMAND \"${TEST_EXECUTABLE}\" ${test_name})\n"
+        "add_test(${test_name} \"${TEST_EXECUTABLE}\" ${test_name})\n"
     )
 endforeach()

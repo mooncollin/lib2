@@ -224,6 +224,15 @@ namespace lib2
             return *this;
         }
 
+        virtual ~ifstream() noexcept
+        {
+            try
+            {
+                close();
+            }
+            catch (...) {}
+        }
+
         void swap(ifstream& other) noexcept
         {
             using std::swap;
@@ -285,6 +294,7 @@ namespace lib2
         }
 
         size_type read(ostream& os, size_type count) override;
+        using istream::read;
     protected:
         opt_type underflow() override;
     private:
@@ -336,8 +346,8 @@ namespace lib2
                 catch (...) {}
 
                 ostream::operator=(std::move(other));
-                pending_ios = std::move(other.pending_ios);
-                free_ios = std::move(other.free_ios);
+                pending_ios = std::exchange(other.pending_ios, nullptr);
+                free_ios = std::exchange(other.free_ios, nullptr);
                 offset = std::exchange(other.offset, 0);
                 handle = std::exchange(other.handle, nullptr);
             }

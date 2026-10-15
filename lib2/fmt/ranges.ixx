@@ -139,8 +139,8 @@ namespace lib2
         void format(R&& r, format_context& ctx) const
         {
             const auto width {this->get_width(ctx)};
-            lib2::ostringstream ss;
-            format_context other_context {ctx, width ? ss : ctx.stream};
+            io::string_sink ss;
+            format_context other_context {ctx, width ? ss : ctx.out};
 
             const auto format_range {[&] {
                 auto it {std::ranges::begin(r)};
@@ -152,7 +152,7 @@ namespace lib2
 
                     for (; it != end; ++it)
                     {
-                        other_context.stream.write(separator);
+                        other_context.out.write(separator);
                         underlying.format(*it, other_context);
                     }
                 }
@@ -161,21 +161,21 @@ namespace lib2
             switch (type)
             {
             case range_format::sequence:
-                other_context.stream.write(opening_bracket);
+                other_context.out.write(opening_bracket);
                 format_range();
-                other_context.stream.write(closing_bracket);
+                other_context.out.write(closing_bracket);
                 break;
             case range_format::disabled:
                 format_range();
                 break;
             case range_format::map:
             case range_format::set:
-                other_context.stream.put('{');
+                other_context.out.put('{');
                 format_range();
-                other_context.stream.put('}');
+                other_context.out.put('}');
                 break;
             case range_format::string:
-            case range_format::escaped_string:
+            // case range_format::escaped_string:
                 if constexpr (std::same_as<T, std::string>)
                 {
                     underlying.format(std::string(std::from_range, r), other_context);
@@ -190,7 +190,7 @@ namespace lib2
                 str_fmt.align = align;
                 str_fmt.set_width(width);
 
-                str_fmt.format(ss.view(), ctx);
+                str_fmt.format(ss.str, ctx);
             }
         }
 
@@ -198,23 +198,23 @@ namespace lib2
             requires(std::same_as<std::remove_cvref_t<std::ranges::range_reference_t<R>>, T>)
         static void default_format(R&& r, format_context& ctx)
         {
-            ctx.stream.put('[');
+            ctx.out.put('[');
 
             auto it {std::ranges::begin(r)};
             const auto end {std::ranges::end(r)};
             if (it != end)
             {
-                format_to<"{}">(ctx.locale(), ctx.stream, *it);
+                format_to<"{}">(ctx.locale(), ctx.out, *it);
                 ++it;
 
                 for (; it != end; ++it)
                 {
-                    ctx.stream.write(", ");
-                    format_to<"{}">(ctx.locale(), ctx.stream, *it);
+                    ctx.out.write(", ");
+                    format_to<"{}">(ctx.locale(), ctx.out, *it);
                 }
             }
 
-            ctx.stream.put(']');
+            ctx.out.put(']');
         }
 
         [[nodiscard]] constexpr range_format get_type() const noexcept
@@ -249,6 +249,10 @@ namespace lib2
                 {
                     underlying.debug = true;
                 }
+                break;
+            case range_format::disabled:
+            case range_format::sequence:
+            case range_format::string:
                 break;
             }
 
@@ -288,11 +292,9 @@ namespace lib2
         }
     }()};
 
-    export
     template<std::ranges::input_range R>
     struct formatter<R>;
 
-    export
     template<std::ranges::input_range R>
         requires(format_kind<R> == range_format::sequence)
     struct formatter<R> : public range_formatter<std::remove_cvref_t<std::ranges::range_reference_t<R>>>
@@ -308,13 +310,12 @@ namespace lib2
         }
     };
 
-    export
     template<std::ranges::input_range R>
         requires(format_kind<R> == range_format::map)
     struct formatter<R> : public range_formatter<std::remove_cvref_t<std::ranges::range_reference_t<R>>>
     {
     public:
-        constexpr formatter<R>()
+        constexpr formatter()
         {
             this->set_type(range_format::map);
         }
@@ -343,13 +344,12 @@ namespace lib2
         using range_formatter<std::remove_cvref_t<std::ranges::range_reference_t<R>>>::underlying;
     };
 
-    export
     template<std::ranges::input_range R>
         requires(format_kind<R> == range_format::set)
     struct formatter<R> : public range_formatter<std::remove_cvref_t<std::ranges::range_reference_t<R>>>
     {
     public:
-        constexpr formatter<R>()
+        constexpr formatter()
         {
             this->set_type(range_format::set);
         }
@@ -378,13 +378,12 @@ namespace lib2
         using range_formatter<std::remove_cvref_t<std::ranges::range_reference_t<R>>>::underlying;
     };
 
-    export
     template<std::ranges::input_range R>
         requires(format_kind<R> == range_format::string)
     struct formatter<R> : public range_formatter<std::string>
     {
     public:
-        constexpr formatter<R>()
+        constexpr formatter()
         {
             this->set_type(range_format::string);
         }
@@ -413,13 +412,12 @@ namespace lib2
         using range_formatter<std::string>::underlying;
     };
 
-    export
     template<std::ranges::input_range R>
         requires(format_kind<R> == range_format::debug_string)
     struct formatter<R> : public range_formatter<std::string>
     {
     public:
-        constexpr formatter<R>()
+        constexpr formatter()
         {
             this->set_type(range_format::debug_string);
         }
@@ -448,7 +446,6 @@ namespace lib2
         using range_formatter<std::string>::underlying;
     };
 
-    export
     template<class... Ts>
     struct formatter<std::tuple<Ts...>> : public width_parser
     {
@@ -497,22 +494,22 @@ namespace lib2
         void format(const std::tuple<Ts...>& value, format_context& ctx) const
         {
             const auto width {this->get_width(ctx)};
-            lib2::ostringstream ss;
-            format_context other_context {ctx, width ? ss : ctx.stream};
+            io::string_sink ss;
+            format_context other_context {ctx, width ? ss : ctx.out};
 
-            other_context.stream.write(opening_bracket);
+            other_context.out.write(opening_bracket);
 
             if constexpr (sizeof...(Ts) > 0)
             {
                 std::apply(
                     [&](const auto& v1, const auto&... vs) {
-                        format_to<"{}">(other_context.locale(), other_context.stream, v1);
-                        ((other_context.stream.write(separator), format_to<"{}">(other_context.locale(), other_context.stream, vs)), ...);
+                        format_to<"{}">(other_context.locale(), other_context.out, v1);
+                        ((other_context.out.write(separator), format_to<"{}">(other_context.locale(), other_context.out, vs)), ...);
                     }
                 , value);
             }
 
-            other_context.stream.write(closing_bracket);
+            other_context.out.write(closing_bracket);
 
             if (width)
             {
@@ -521,29 +518,28 @@ namespace lib2
                 str_fmt.align = align;
                 str_fmt.set_width(width);
 
-                str_fmt.format(ss.view(), ctx);
+                str_fmt.format(ss.str, ctx);
             }
         }
 
         static void default_format(const std::tuple<Ts...>& value, format_context& ctx)
         {
-            ctx.stream.put('(');
+            ctx.out.put('(');
 
             if constexpr (sizeof...(Ts) > 0)
             {
                 std::apply(
                     [&](const auto& v1, const auto&... vs) {
-                        format_to<"{}">(ctx.locale(), ctx.stream, v1);
-                        ((ctx.stream.write(", "), format_to<"{}">(ctx.locale(), ctx.stream, vs)), ...);
+                        format_to<"{}">(ctx.locale(), ctx.out, v1);
+                        ((ctx.out.write(", "), format_to<"{}">(ctx.locale(), ctx.out, vs)), ...);
                     }
                 , value);
             }
 
-            ctx.stream.put(')');
+            ctx.out.put(')');
         }
     };
 
-    export
     template<class T1, class T2>
     struct formatter<std::pair<T1, T2>> : public formatter<std::tuple<T1, T2>>
     {

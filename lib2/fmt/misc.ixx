@@ -14,7 +14,6 @@ import :arithmetic;
 
 namespace lib2
 {
-    export
     template<>
     struct formatter<bool> : public width_parser
     {
@@ -118,7 +117,7 @@ namespace lib2
                 }
                 else
                 {
-                    ctx.stream.write(svalue);
+                    ctx.out.write(svalue);
                 }
             }
         }
@@ -127,16 +126,15 @@ namespace lib2
         {
             if (value)
             {
-                ctx.stream.write("true");
+                ctx.out.write("true");
             }
             else
             {
-                ctx.stream.write("false");
+                ctx.out.write("false");
             }
         }
     };
 
-    export
     template<std::derived_from<std::exception> E>
     struct formatter<E>
     {
@@ -157,7 +155,7 @@ namespace lib2
 
         void format(const std::exception& e, format_context& ctx) const
         {
-            ctx.stream.write(e.what());
+            ctx.out.write(e.what());
 
             try
             {
@@ -165,13 +163,12 @@ namespace lib2
             }
             catch (const std::exception& e2)
             {
-                ctx.stream.write(delim);
+                ctx.out.write(delim);
                 format(e2, ctx);
             }
         }
     };
 
-    export
     template<>
     struct formatter<std::filesystem::path> : public width_parser
     {
@@ -223,7 +220,7 @@ namespace lib2
             #if _WIN32
             lib2::utf16_to_utf8(value.native(), text_ostream_iterator{ctx.stream});
             #else
-            str_fmt.format(value.native(), ctx);
+            formatter<std::string>::default_format(value.native(), ctx);
             #endif
         }
     };

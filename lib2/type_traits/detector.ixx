@@ -20,7 +20,6 @@ namespace lib2
 		using type = Default;
 	};
 
-	export
 	template<class Default, template<class...> class Op, class... Args>
 	struct detector<Default, std::void_t<Op<Args...>>, Op, Args...>
 	{

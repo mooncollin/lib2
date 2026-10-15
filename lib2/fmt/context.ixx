@@ -4,6 +4,7 @@ import std;
 
 import lib2.io;
 import lib2.type_traits;
+import lib2.concepts;
 
 import :formatter;
 
@@ -107,16 +108,17 @@ namespace lib2
     class format_context
     {
     public:
+        format_context(const format_context&) = delete;
         format_context& operator=(const format_context&) = delete;
         
-        format_context(text_ostream os, const format_args args = {}) noexcept
-            : stream{os}, args{args}, loc{nullptr} {}
+        format_context(io::dyn_sink out, const format_args args = {}) noexcept
+            : out{out}, args{args}, loc{nullptr} {}
 
-        format_context(const std::locale& loc, text_ostream os, const format_args args = {}) noexcept
-            : stream{os}, args{args}, loc{std::addressof(loc)} {}
+        format_context(const std::locale& loc, io::dyn_sink out, const format_args args = {}) noexcept
+            : out{out}, args{args}, loc{std::addressof(loc)} {}
 
-        format_context(const format_context& other, text_ostream os) noexcept
-            : stream{os}, args{other.args}, loc{other.loc} {}
+        format_context(const format_context& other, io::dyn_sink out) noexcept
+            : out{out}, args{other.args}, loc{other.loc} {}
 
         [[nodiscard]] std::locale locale() const noexcept
         {
@@ -128,7 +130,7 @@ namespace lib2
             return {};
         }
 
-        text_ostream stream;
+        io::dyn_sink out;
         const format_args args;
     private:
         const std::locale* const loc;
@@ -214,108 +216,46 @@ namespace lib2
         };
 
         template<class T>
-        struct to_format_arg : std::type_identity<handle>
+        [[nodiscard]] static consteval arg_type determine_format_arg() noexcept
         {
-            static constexpr auto value {arg_type::custom};
-        };
-
-        template<>
-        struct to_format_arg<char> : std::type_identity<char>
-        {
-            static constexpr auto value {arg_type::character};
-        };
-
-        template<>
-        struct to_format_arg<bool> : std::type_identity<bool>
-        {
-            static constexpr auto value {arg_type::boolean};
-        };
-
-        template<std::signed_integral T>
-        struct to_format_arg<T> : std::type_identity<std::intmax_t>
-        {
-            static constexpr auto value {arg_type::signed_integer};
-        };
-
-        template<std::unsigned_integral T>
-        struct to_format_arg<T> : std::type_identity<std::uintmax_t>
-        {
-            static constexpr auto value {arg_type::unsigned_integer};
-        };
-
-        template<std::floating_point F>
-        struct to_format_arg<F> : std::type_identity<long double>
-        {
-            static constexpr auto value {arg_type::floating};
-        };
-
-        template<>
-        struct to_format_arg<std::string_view> : std::type_identity<std::string_view>
-        {
-            static constexpr auto value {arg_type::string};
-        };
-
-        template<>
-        struct to_format_arg<const char*> : to_format_arg<std::string_view> {};
-
-        template<>
-        struct to_format_arg<char*> : to_format_arg<std::string_view> {};
-
-        template<std::size_t N>
-        struct to_format_arg<const char[N]> : to_format_arg<std::string_view> {};
-
-        template<std::size_t N>
-        struct to_format_arg<char[N]> : to_format_arg<std::string_view> {};
-
-        template<class Allocator>
-        struct to_format_arg<std::basic_string<char, std::char_traits<char>, Allocator>> : to_format_arg<std::string_view> {};
-
-        template<>
-        struct to_format_arg<const void*> : std::type_identity<const void*>
-        {
-            static constexpr auto value {arg_type::pointer};
-        };
-
-        template<>
-        struct to_format_arg<void*> : to_format_arg<const void*> {};
-
-        template<>
-        struct to_format_arg<std::nullptr_t> : to_format_arg<const void*> {};
-
-        format_arg() noexcept
-            : type{arg_type::none} {}
-
-        format_arg(const format_arg& other) noexcept
-            : type{other.type}
-        {
-            switch (type)
+            if constexpr (std::same_as<T, char>)
             {
-            case arg_type::boolean:
-                std::construct_at(&b, other.b);
-                break;
-            case arg_type::character:
-                std::construct_at(&c, other.c);
-                break;
-            case arg_type::signed_integer:
-                std::construct_at(&si, other.si);
-                break;
-            case arg_type::unsigned_integer:
-                std::construct_at(&ui, other.ui);
-                break;
-            case arg_type::floating:
-                std::construct_at(&f, other.f);
-                break;
-            case arg_type::string:
-                std::construct_at(&s, other.s);
-                break;
-            case arg_type::pointer:
-                std::construct_at(&p, other.p);
-                break;
-            case arg_type::custom:
-                std::construct_at(&h, other.h);
-                break;
+                return arg_type::character;
+            }
+            else if constexpr (std::same_as<T, bool>)
+            {
+                return arg_type::boolean;
+            }
+            else if constexpr (std::same_as<T, std::string_view> || std::same_as<T, const char*> || std::same_as<T, char> || (std::is_array_v<T> && std::same_as<std::remove_const_t<std::remove_extent_t<T>>, char>) || specialization_of<T, std::basic_string>)
+            {
+                return arg_type::string;
+            }
+            else if constexpr (std::same_as<T, const void*> || std::same_as<T, void*> || std::same_as<T, std::nullptr_t>)
+            {
+                return arg_type::pointer;
+            }
+            else if constexpr (std::signed_integral<T>)
+            {
+                return arg_type::signed_integer;
+            }
+            else if constexpr (std::unsigned_integral<T>)
+            {
+                return arg_type::unsigned_integer;
+            }
+            else if constexpr (std::floating_point<T>)
+            {
+                return arg_type::floating;
+            }
+            else
+            {
+                return arg_type::custom;
             }
         }
+
+        constexpr format_arg() noexcept
+            : type{arg_type::none} {}
+
+        constexpr format_arg(const format_arg& other) noexcept = default;
 
         [[nodiscard]] constexpr explicit operator bool() const noexcept
         {
@@ -444,7 +384,7 @@ namespace lib2
     struct format_type_store
     {
         constexpr format_type_store() noexcept
-            : args{format_arg::to_format_arg<Args>::value...} {}
+            : args{format_arg::determine_format_arg<Args>()...} {}
 
         const std::array<format_arg::arg_type, sizeof...(Args)> args;
     };
@@ -524,7 +464,7 @@ namespace lib2
             const auto& compile_ctx {static_cast<const compile_format_parse_context&>(*this)};
             const auto type {compile_ctx.args.get(id)};
 
-            if (((format_arg::to_format_arg<Ts>::value != type) && ...))
+            if (((format_arg::determine_format_arg<Ts>() != type) && ...))
             {
                 throw format_error{"check_dynamic_spec failed"};
             }

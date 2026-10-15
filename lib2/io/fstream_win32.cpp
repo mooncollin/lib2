@@ -147,13 +147,13 @@ namespace lib2
         }
     }
 
-    static HANDLE io_open(const std::filesystem::path::string_type::value_type* const filename, const DWORD access, const DWORD creation, const DWORD flags = FILE_ATTRIBUTE_NORMAL)
+    static HANDLE io_open(const std::filesystem::path::string_type::value_type* const filename, const DWORD access, const DWORD creation, const DWORD share = 0, const DWORD flags = FILE_ATTRIBUTE_NORMAL)
     {
         const auto handle {
             CreateFileW(
             filename,
             access,
-            0,
+            share,
             nullptr,
             creation,
             flags,
@@ -424,7 +424,7 @@ namespace lib2
             throw std::invalid_argument{"File must be opened with in mode"};
         }
 
-        handle = io_open(filename, GENERIC_READ, OPEN_EXISTING);
+        handle = io_open(filename, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ);
     }
 
     void ifstream::close()
@@ -1218,15 +1218,9 @@ namespace lib2
     class null_stdostream final : public ostream
     {
     public:
-        null_stdostream(std::error_code ec) noexcept
-            : ec{std::move(ec)} {}
+        null_stdostream() noexcept {}
     protected:
-        void overflow(const std::byte) override
-        {
-            throw std::system_error{ec};
-        }
-    private:
-        std::error_code ec;
+        void overflow(const std::byte) override {}
     };
 
     class null_stdistream final : public istream
@@ -1234,15 +1228,12 @@ namespace lib2
     public:
         using opt_type = istream::opt_type;
 
-        null_stdistream(std::error_code ec) noexcept
-            : ec{std::move(ec)} {}
+        null_stdistream() noexcept {}
     protected:
         opt_type underflow() override
         {
-            throw std::system_error{ec};
+            return {};
         }
-    private:
-        std::error_code ec;
     };
 
     text_ostream init_cout() noexcept
@@ -1262,7 +1253,7 @@ namespace lib2
         
         if (err)
         {
-            static null_stdostream null_cout {err};
+            static null_stdostream null_cout;
             return null_cout;
         }
         
@@ -1294,7 +1285,7 @@ namespace lib2
 
         if (err)
         {
-            static null_stdostream null_cerr {err};
+            static null_stdostream null_cerr;
             return null_cerr;
         }
         
@@ -1326,7 +1317,7 @@ namespace lib2
 
         if (err)
         {
-            static null_stdistream null_cin {err};
+            static null_stdistream null_cin;
             return null_cin;
         }
        
@@ -1338,5 +1329,56 @@ namespace lib2
 
         static whandle_in_stream f_cin {in_handle};
         return f_cin;
+    }
+
+
+
+
+
+
+
+    void file_sink::open(const std::filesystem::path::string_type::value_type* const filename, const openmode mode)
+    {
+        close();
+
+        if (mode & openmode::in)
+        {
+            throw std::invalid_argument{"File must be opened with out mode"};
+        }
+
+        DWORD creation {CREATE_ALWAYS};
+        handle = io_open(filename, GENERIC_WRITE, creation);
+    }
+
+    void file_sink::close()
+    {
+        if (is_open())
+        {
+            io_close(handle);
+            handle = nullptr;
+        }
+    }
+
+    void file_sink::write(const char* const buf, std::size_t count)
+    {
+        if (!is_open())
+        {
+            throw std::logic_error{"File not open"};
+        }
+
+        io_write(handle, reinterpret_cast<const std::byte*>(buf), count);
+    }
+
+    void file_sink::fill(const char c, std::size_t count)
+    {
+        if (!is_open())
+        {
+            throw std::logic_error{"File not open"};
+        }
+
+        while (count--)
+        {
+            io_write(handle, reinterpret_cast<const std::byte*>(&c), 1);
+        }
     }
 }

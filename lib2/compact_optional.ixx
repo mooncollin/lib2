@@ -95,7 +95,7 @@ namespace lib2
             return *this;
         }
 
-        template<std::convertible_to<T> U = std::remove_cv_t<T>>
+        template<std::convertible_to<T> U>
         constexpr compact_optional& operator=(U&& value) noexcept(std::is_nothrow_constructible_v<T, U>)
         {
             value_ = std::forward<U>(value);
@@ -222,10 +222,8 @@ namespace lib2
             return value_;
         }
 
-        constexpr std::compare_three_way_result_t<T, T> operator<=>(const compact_optional& other) const
-        {
-            return value_ <=> other.value_;
-        }
+        constexpr bool operator==(const compact_optional&) const noexcept = default;
+        constexpr auto operator<=>(const compact_optional&) const noexcept = default;
 
         constexpr std::strong_ordering operator<=>(std::nullopt_t) const noexcept
         {
@@ -245,40 +243,40 @@ namespace lib2
             return value_ == other;
         }
 
-        template<class U>
-            requires(!is_compact_optional_v<U>)
-        constexpr bool operator!=(const U& other) const
-        {
-            return value_ != other;
-        }
+        // template<class U>
+        //     requires(!is_compact_optional_v<U>)
+        // constexpr bool operator!=(const U& other) const
+        // {
+        //     return value_ != other;
+        // }
 
-        template<class U>
-            requires(!is_compact_optional_v<U>)
-        constexpr bool operator<(const U& other) const
-        {
-            return value_ < other;
-        }
+        // template<class U>
+        //     requires(!is_compact_optional_v<U>)
+        // constexpr bool operator<(const U& other) const
+        // {
+        //     return value_ < other;
+        // }
 
-        template<class U>
-            requires(!is_compact_optional_v<U>)
-        constexpr bool operator>(const U& other) const
-        {
-            return value_ > other;
-        }
+        // template<class U>
+        //     requires(!is_compact_optional_v<U>)
+        // constexpr bool operator>(const U& other) const
+        // {
+        //     return value_ > other;
+        // }
 
-        template<class U>
-            requires(!is_compact_optional_v<U>)
-        constexpr bool operator<=(const U& other) const
-        {
-            return value_ <= other;
-        }
+        // template<class U>
+        //     requires(!is_compact_optional_v<U>)
+        // constexpr bool operator<=(const U& other) const
+        // {
+        //     return value_ <= other;
+        // }
 
-        template<class U>
-            requires(!is_compact_optional_v<U>)
-        constexpr bool operator>=(const U& other) const
-        {
-            return value_ >= other;
-        }
+        // template<class U>
+        //     requires(!is_compact_optional_v<U>)
+        // constexpr bool operator>=(const U& other) const
+        // {
+        //     return value_ >= other;
+        // }
     private:
         T value_;
     };

@@ -334,7 +334,7 @@ namespace lib2
             return !(*this == other);
         }
     private:
-        [[msvc::no_unique_address]] Allocator alloc;
+        [[no_unique_address]] Allocator alloc;
         std::size_t size_;
 
         union

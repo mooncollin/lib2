@@ -7,76 +7,34 @@
   },
   "configurePresets": [
     {
-      "name": "base-debug",
-      "generator": "Ninja",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "base-release",
-      "hidden": true,
+      "name": "debug",
       "generator": "Ninja",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_C_COMPILER": "clang"
+      },
+      "binaryDir": "${sourceDir}/build/debug"
     },
     {
-      "name": "base-release-debug",
-      "hidden": true,
+      "name": "release",
       "generator": "Ninja",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-      }
-    },
-    {
-      "name": "windows-debug",
-      "displayName": "Windows Debug",
-      "inherits": "base-debug",
-      "binaryDir": "${sourceDir}/build/windows/debug"
-    },
-    {
-      "name": "windows-release",
-      "displayName": "Windows Release",
-      "inherits": "base-release",
-      "binaryDir": "${sourceDir}/build/windows/release"
-    },
-    {
-      "name": "windows-release-debug",
-      "displayName": "Windows Release (With Debug Info)",
-      "inherits": "base-release-debug",
-      "binaryDir": "${sourceDir}/build/windows/release_with_deb_info"
-    },
-    {
-      "name": "linux-debug",
-      "displayName": "Linux Debug",
-      "inherits": "base-debug",
-      "binaryDir": "${sourceDir}/build/linux/debug"
-    },
-    {
-      "name": "linux-release",
-      "displayName": "Linux Release",
-      "inherits": "base-release",
-      "binaryDir": "${sourceDir}/build/linux/release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_C_COMPILER": "clang"
+      },
+      "binaryDir": "${sourceDir}/build/release"
     }
   ],
   "buildPresets": [
-    {
-      "name": "windows-debug",
-      "configurePreset": "windows-debug"
-    },
-    {
-      "name": "windows-release",
-      "configurePreset": "windows-release"
-    },
     { 
-      "name": "linux-debug",
-      "configurePreset": "linux-debug"
+      "name": "debug",
+      "configurePreset": "debug"
     },
     {
-      "name": "linux-release",
-      "configurePreset": "linux-release"
+      "name": "release",
+      "configurePreset": "release"
     }
   ]
 }

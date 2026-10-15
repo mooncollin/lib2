@@ -12,7 +12,7 @@ import :assert_exception;
 namespace lib2::test
 {
 	template<class T>
-	[[nodiscard]] static inline std::string output(const T& value)
+	[[nodiscard]] inline std::string output(const T& value)
 	{
 		if constexpr (character<T>)
 		{
@@ -42,7 +42,7 @@ namespace lib2::test
 		}
 	}
 
-	[[nodiscard]] static inline std::string output(const auto& actual, const auto& expected)
+	[[nodiscard]] inline std::string output(const auto& actual, const auto& expected)
 	{
 		return lib2::format<"Actual:\n{}\nExpected:\n{}">(output(actual), output(expected));
 	}
@@ -51,7 +51,7 @@ namespace lib2::test
 			std::sentinel_for<I1> S1,
 			std::input_iterator I2,
 			std::sentinel_for<I2> S2>
-	[[nodiscard]] static inline std::string output(I1 actual, I1 mismatch1, S1 end1, I2 expected, I2 mismatch2, S2 end2)
+	[[nodiscard]] inline std::string output(I1 actual, I1 mismatch1, S1 end1, I2 expected, I2 mismatch2, S2 end2)
 	{
 		if constexpr (std::forward_iterator<I1> && std::forward_iterator<I2>)
 		{
@@ -246,7 +246,7 @@ namespace lib2::test
 	{
 		if constexpr (!lib2::specialization_of<Actual, Expected>)
 		{
-			throw assert_exception{lib2::format<"({}:{}) assert_is_specialization_of failed: {}\n{}">(location.file_name(), location.line(), message, output(typeid(Actual).name(), typeid(Expected).name()))};
+			throw assert_exception{lib2::format<"({}:{}) assert_is_specialization_of failed: {}">(location.file_name(), location.line(), message)};
 		}
 	}
 
@@ -256,7 +256,7 @@ namespace lib2::test
 	{
 		if constexpr (lib2::specialization_of<Actual, Expected>)
 		{
-			throw assert_exception{lib2::format<"({}:{}) assert_is_not_specialization_of failed: {}\n{}">(location.file_name(), location.line(), message, output(typeid(Actual).name(), typeid(Expected).name()))};
+			throw assert_exception{lib2::format<"({}:{}) assert_is_not_specialization_of failed: {}">(location.file_name(), location.line(), message)};
 		}
 	}
 

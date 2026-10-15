@@ -2,13 +2,11 @@ import std;
 
 import lib2;
 
-class ostream_bench : public lib2::benchmarking::benchmark
+void ostream_bench(lib2::benchmarking::state& state)
 {
-public:
-    ostream_bench()
-        : lib2::benchmarking::benchmark{"std::ostream"} {}
+    std::ostringstream ss;
 
-    void operator()() final
+    for (auto _ : state)
     {
         ss.str({});
         ss << std::setw(5)
@@ -17,65 +15,51 @@ public:
            << 'I';
         lib2::benchmarking::do_not_optimize(ss);
     }
-private:
-    std::ostringstream ss;
-};
+}
 
-class format_bench : public lib2::benchmarking::benchmark
+void format_bench(lib2::benchmarking::state& state)
 {
-public:
-    format_bench()
-        : lib2::benchmarking::benchmark{"std::format"} {}
+    std::string str;
 
-    void operator()() final
+    for (auto _ : state)
     {
         str = std::format("{:%^5}", 'I');
         lib2::benchmarking::do_not_optimize(str);
     }
-private:
-    std::string str;
-};
+}
 
-class lib2_fmt_ct_bench : public lib2::benchmarking::benchmark
+void lib2_fmt_ct_bench(lib2::benchmarking::state& state)
 {
-public:
-    lib2_fmt_ct_bench()
-        : lib2::benchmarking::benchmark{"lib2::format<Fmt>"} {}
+    std::string str;
 
-    void operator()() final
+    for (auto _ : state)
     {
         str = lib2::format<"{:%^5}">('I');
         lib2::benchmarking::do_not_optimize(str);
     }
-private:
-    std::string str;
-};
+}
 
-class lib2_fmt_rt_bench : public lib2::benchmarking::benchmark
+void lib2_fmt_rt_bench(lib2::benchmarking::state& state)
 {
-public:
-    lib2_fmt_rt_bench()
-        : lib2::benchmarking::benchmark{"lib2::format(Fmt)"} {}
+    std::string str;
 
-    void operator()() final
+    for (auto _ : state)
     {
         str = lib2::format("{:%^5}", 'I');
         lib2::benchmarking::do_not_optimize(str);
     }
-private:
-    std::string str;
-};
+}
 
 int main()
 {
-    const lib2::benchmarking::benchmarking_min_time ctx {std::chrono::seconds{5}};
-    
-    ostream_bench b1;
-    format_bench b2;
-    lib2_fmt_ct_bench b3;
-    lib2_fmt_rt_bench b4;
+    constexpr lib2::benchmarking::benchmarking_min_time ctx {std::chrono::seconds{5}};
 
-    lib2::benchmarking::print_benchmarks(ctx,
-        b1, b2, b3, b4
-    );
+    lib2::benchmarking::suite suite;
+
+    suite.add("std::ostringstream", &ostream_bench);
+    suite.add("std::format", &format_bench);
+    suite.add("lib2::format<Fmt>", &lib2_fmt_ct_bench);
+    suite.add("lib2::format(Fmt)", &lib2_fmt_rt_bench);
+
+    lib2::benchmarking::print_benchmarks(ctx, suite);
 }

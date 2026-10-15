@@ -69,7 +69,6 @@ namespace lib2
         std::uintptr_t ptr_;
     };
 
-    export
     template<class T>
     class tagged_pointer<T, 0>
     {

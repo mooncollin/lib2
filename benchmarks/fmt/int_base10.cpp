@@ -2,143 +2,118 @@ import std;
 
 import lib2;
 
-template<class T>
-class int_benchmark : public lib2::benchmarking::benchmark
+template<std::integral T>
+T sign() noexcept
 {
-public:
-    using lib2::benchmarking::benchmark::benchmark;
-protected:
-    static T get_int()
+    return static_cast<T>(std::rand() % 2 ? -1 : 1);
+}
+
+template<std::integral T>
+T get_int() noexcept
+{
+    const auto value {std::rand() % std::numeric_limits<T>::max()};
+
+    if constexpr (std::signed_integral<T>)
     {
-        return static_cast<T>(std::rand() % std::numeric_limits<T>::max());
+        return value * sign<T>();
     }
-};
+    else
+    {
+        return value;
+    }
+}
 
 template<class T>
-    requires(std::signed_integral<T>)
-class int_benchmark<T> : public lib2::benchmarking::benchmark
+void ostream_int(lib2::benchmarking::state& state)
 {
-public:
-    using lib2::benchmarking::benchmark::benchmark;
-protected:
-    static T get_int()
-    {
-        return static_cast<T>(std::rand() % std::numeric_limits<T>::max()) * sign();
-    }
-private:
-    static T sign()
-    {
-        return static_cast<T>(std::rand() % 2 ? -1 : 1);
-    }
-};
+    std::ostringstream ss;
 
-template<class T>
-class ostream_int final : public int_benchmark<T>
-{
-public:
-    ostream_int()
-        : int_benchmark<T>{"std::ostream"} {}
-
-    void operator()()
+    for (auto _ : state)
     {
         ss.str({});
-        ss << this->get_int();
+        ss << get_int<T>();
     }
-private:
-    std::ostringstream ss;
-};
+}
 
 template<class T>
-class format_int final : public int_benchmark<T>
+void format_int(lib2::benchmarking::state& state)
 {
-public:
-    format_int()
-        : int_benchmark<T>{"std::format"} {}
-
-    void operator()()
+    for (auto _ : state)
     {
-        const auto str {std::format("{}", this->get_int())};
+        const auto str {std::format("{}", get_int<T>())};
         lib2::benchmarking::do_not_optimize(str);
     }
-};
+}
 
 template<class T>
-class to_string_int final : public int_benchmark<T>
+void to_string_int(lib2::benchmarking::state& state)
 {
-public:
-    to_string_int()
-        : int_benchmark<T>{"std::to_string"} {}
-
-    void operator()()
+    for (auto _ : state)
     {
-        const auto str {std::to_string(this->get_int())};
+        const auto str {std::to_string(get_int<T>())};
         lib2::benchmarking::do_not_optimize(str);
     }
-};
+}
 
 template<class T>
-class lib2_format_int final : public int_benchmark<T>
+void lib2_format_int(lib2::benchmarking::state& state)
 {
-public:
-    lib2_format_int()
-        : int_benchmark<T>{"lib2::format"} {}
-
-    void operator()()
+    for (auto _ : state)
     {
-        const auto str {lib2::format<"{}">(this->get_int())};
+        const auto str {lib2::format<"{}">(get_int<T>())};
         lib2::benchmarking::do_not_optimize(str);
     }
-};
+}
 
 int main()
 {
-    const lib2::benchmarking::benchmarking_min_time ctx {std::chrono::seconds{5}};
+    constexpr lib2::benchmarking::benchmarking_min_time ctx {std::chrono::seconds{5}};
 
-    lib2::benchmarking::benchmark_suite uint8_benchmarks;
-    uint8_benchmarks.add_benchmark<format_int<std::uint8_t>>();
-    uint8_benchmarks.add_benchmark<to_string_int<std::uint8_t>>();
-    uint8_benchmarks.add_benchmark<lib2_format_int<std::uint8_t>>();
+    lib2::benchmarking::suite uint8_benchmarks;
+    uint8_benchmarks.add("std::format", &format_int<std::uint8_t>);
+    uint8_benchmarks.add("std::to_string", &to_string_int<std::uint8_t>);
+    uint8_benchmarks.add("lib2::format", &lib2_format_int<std::uint8_t>);
 
-    lib2::benchmarking::benchmark_suite int8_benchmarks;
-    int8_benchmarks.add_benchmark<format_int<std::int8_t>>();
-    int8_benchmarks.add_benchmark<to_string_int<std::int8_t>>();
-    int8_benchmarks.add_benchmark<lib2_format_int<std::int8_t>>();
+    lib2::benchmarking::suite int8_benchmarks;
+    int8_benchmarks.add("std::format", &format_int<std::int8_t>);
+    int8_benchmarks.add("std::to_string", &to_string_int<std::int8_t>);
+    int8_benchmarks.add("lib2::format", &lib2_format_int<std::int8_t>);
 
-    lib2::benchmarking::benchmark_suite uint16_benchmarks;
-    uint16_benchmarks.add_benchmark<ostream_int<std::uint16_t>>();
-    uint16_benchmarks.add_benchmark<format_int<std::uint16_t>>();
-    uint16_benchmarks.add_benchmark<to_string_int<std::uint16_t>>();
-    uint16_benchmarks.add_benchmark<lib2_format_int<std::uint16_t>>();
+    lib2::benchmarking::suite uint16_benchmarks;
+    uint16_benchmarks.add("std::ostringstream", &ostream_int<std::uint16_t>);
+    uint16_benchmarks.add("std::format", &format_int<std::uint16_t>);
+    uint16_benchmarks.add("std::to_string", &to_string_int<std::uint16_t>);
+    uint16_benchmarks.add("lib2::format", &lib2_format_int<std::uint16_t>);
 
-    lib2::benchmarking::benchmark_suite int16_benchmarks;
-    int16_benchmarks.add_benchmark<ostream_int<std::int16_t>>();
-    int16_benchmarks.add_benchmark<format_int<std::int16_t>>();
-    int16_benchmarks.add_benchmark<to_string_int<std::int16_t>>();
-    int16_benchmarks.add_benchmark<lib2_format_int<std::int16_t>>();
+    lib2::benchmarking::suite int16_benchmarks;
+    int16_benchmarks.add("std::ostringstream", &ostream_int<std::int16_t>);
+    int16_benchmarks.add("std::format", &format_int<std::int16_t>);
+    int16_benchmarks.add("std::to_string", &to_string_int<std::int16_t>);
+    int16_benchmarks.add("lib2::format", &lib2_format_int<std::int16_t>);
 
-    lib2::benchmarking::benchmark_suite uint32_benchmarks;
-    uint32_benchmarks.add_benchmark<ostream_int<std::uint32_t>>();
-    uint32_benchmarks.add_benchmark<format_int<std::uint32_t>>();
-    uint32_benchmarks.add_benchmark<to_string_int<std::uint32_t>>();
-    uint32_benchmarks.add_benchmark<lib2_format_int<std::uint32_t>>();
+    lib2::benchmarking::suite uint32_benchmarks;
+    uint32_benchmarks.add("std::ostringstream", &ostream_int<std::uint32_t>);
+    uint32_benchmarks.add("std::format", &format_int<std::uint32_t>);
+    uint32_benchmarks.add("std::to_string", &to_string_int<std::uint32_t>);
+    uint32_benchmarks.add("lib2::format", &lib2_format_int<std::uint32_t>);
 
-    lib2::benchmarking::benchmark_suite int32_benchmarks;
-    int32_benchmarks.add_benchmark<ostream_int<std::int32_t>>();
-    int32_benchmarks.add_benchmark<format_int<std::int32_t>>();
-    int32_benchmarks.add_benchmark<to_string_int<std::int32_t>>();
-    int32_benchmarks.add_benchmark<lib2_format_int<std::int32_t>>();
+    lib2::benchmarking::suite int32_benchmarks;
+    int32_benchmarks.add("std::ostringstream", &ostream_int<std::int32_t>);
+    int32_benchmarks.add("std::format", &format_int<std::int32_t>);
+    int32_benchmarks.add("std::to_string", &to_string_int<std::int32_t>);
+    int32_benchmarks.add("lib2::format", &lib2_format_int<std::int32_t>);
 
-    lib2::benchmarking::benchmark_suite uint64_benchmarks;
-    uint64_benchmarks.add_benchmark<ostream_int<std::uint64_t>>();
-    uint64_benchmarks.add_benchmark<format_int<std::uint64_t>>();
-    uint64_benchmarks.add_benchmark<to_string_int<std::uint64_t>>();
-    uint64_benchmarks.add_benchmark<lib2_format_int<std::uint64_t>>();
+    lib2::benchmarking::suite uint64_benchmarks;
+    uint64_benchmarks.add("std::ostringstream", &ostream_int<std::uint64_t>);
+    uint64_benchmarks.add("std::format", &format_int<std::uint64_t>);
+    uint64_benchmarks.add("std::to_string", &to_string_int<std::uint64_t>);
+    uint64_benchmarks.add("lib2::format", &lib2_format_int<std::uint64_t>);
 
-    lib2::benchmarking::benchmark_suite int64_benchmarks;
-    int64_benchmarks.add_benchmark<ostream_int<std::int64_t>>();
-    int64_benchmarks.add_benchmark<format_int<std::int64_t>>();
-    int64_benchmarks.add_benchmark<to_string_int<std::int64_t>>();
-    int64_benchmarks.add_benchmark<lib2_format_int<std::int64_t>>();
+    lib2::benchmarking::suite int64_benchmarks;
+    int64_benchmarks.add("std::ostringstream", &ostream_int<std::int64_t>);
+    int64_benchmarks.add("std::format", &format_int<std::int64_t>);
+    int64_benchmarks.add("std::to_string", &to_string_int<std::int64_t>);
+    int64_benchmarks.add("lib2::format", &lib2_format_int<std::int64_t>);
     
     lib2::print<"Default formatting of std::uint8:\n">();
     lib2::benchmarking::print_benchmarks(ctx, uint8_benchmarks);

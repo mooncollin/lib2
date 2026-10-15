@@ -414,30 +414,35 @@ namespace lib2
                 return written;
             });
 
-            // Grow faster than normal
-            size_type res_amt {buf.capacity() + count};
-            if (res_amt < (std::numeric_limits<size_type>::max() / 4))
+            const auto current_cap {buf.capacity()};
+            const auto required_cap {current_cap + count};
+            auto target_cap {required_cap};
+
+            if (current_cap < (std::numeric_limits<size_type>::max() / 2))
             {
-                res_amt <<= 2;
-                try
-                {
-                    buf.resize_and_overwrite(res_amt, [&](const auto, const auto) {
-                        return written;
-                    });
-                }
-                catch (const std::bad_alloc&)
-                {
-                    buf.resize_and_overwrite(buf.capacity() + count, [&](const auto, const auto) {
-                        return written;
-                    });
-                }
+                target_cap = std::max(current_cap << 1, required_cap);
             }
-            else
+
+            try
             {
-                buf.resize_and_overwrite(res_amt, [&](const auto, const auto) {
+                buf.resize_and_overwrite(target_cap, [&](const auto, const auto) {
                     return written;
                 });
             }
+            catch (const std::bad_alloc&)
+            {
+                if (target_cap > required_cap)
+                {
+                    buf.resize_and_overwrite(required_cap, [&](const auto, const auto) {
+                        return written;
+                    });
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
             init_buf_ptrs();
         }
     };
@@ -642,30 +647,35 @@ namespace lib2
                 return written;
             });
 
-            // Grow faster than normal
-            size_type res_amt {buf.capacity() + count};
-            if (res_amt < (std::numeric_limits<size_type>::max() / 4))
+            const auto current_cap {buf.capacity()};
+            const auto required_cap {current_cap + count};
+            auto target_cap {required_cap};
+
+            if (current_cap < (std::numeric_limits<size_type>::max() / 2))
             {
-                res_amt <<= 2;
-                try
-                {
-                    buf.resize_and_overwrite(res_amt, [&](const auto, const auto) {
-                        return written;
-                    });
-                }
-                catch (const std::bad_alloc&)
-                {
-                    buf.resize_and_overwrite(buf.capacity() + count, [&](const auto, const auto) {
-                        return written;
-                    });
-                }
+                target_cap = std::max(current_cap << 1, required_cap);
             }
-            else
+
+            try
             {
-                buf.resize_and_overwrite(res_amt, [&](const auto, const auto) {
+                buf.resize_and_overwrite(target_cap, [&](const auto, const auto) {
                     return written;
                 });
             }
+            catch (const std::bad_alloc&)
+            {
+                if (target_cap > required_cap)
+                {
+                    buf.resize_and_overwrite(required_cap, [&](const auto, const auto) {
+                        return written;
+                    });
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
             init_buf_ptrs();
         }
     };

@@ -211,13 +211,16 @@ namespace lib2
             "fc", "fd", "fe", "ff"
         };
 
-        while (val >= 256)
+        if constexpr (sizeof(T) > 1)
         {
-            const auto byte {val & 0xFF};
-            val >>= 8;
-            end -= 2;
-            end[0] = digit_table[byte][0];
-            end[1] = digit_table[byte][1];
+            while (val >= 256)
+            {
+                const auto byte {val & 0xFF};
+                val = static_cast<T>(val >> 8);
+                end -= 2;
+                end[0] = digit_table[byte][0];
+                end[1] = digit_table[byte][1];
+            }
         }
 
         if (val < 16)
@@ -304,13 +307,16 @@ namespace lib2
             "FC", "FD", "FE", "FF"
         };
 
-        while (val >= 256)
+        if constexpr (sizeof(T) > 1)
         {
-            const auto byte {val & 0xFF};
-            val >>= 8;
-            end -= 2;
-            end[0] = digit_table[byte][0];
-            end[1] = digit_table[byte][1];
+            while (val >= 256)
+            {
+                const auto byte {val & 0xFF};
+                val = static_cast<T>(val >> 8);
+                end -= 2;
+                end[0] = digit_table[byte][0];
+                end[1] = digit_table[byte][1];
+            }
         }
 
         if (val < 16)
@@ -375,7 +381,6 @@ namespace lib2
         return std::to_chars(begin, end, val, fmt, precision).ptr;
     }
 
-    export
     template<std::integral T>
         requires(!character<T> && !std::same_as<T, bool>)
     struct formatter<T> : public width_parser
@@ -540,6 +545,9 @@ namespace lib2
                     case sign_parser::sign_type::plus:
                     case sign_parser::sign_type::space:
                         *--extra_begin = std::to_underlying(sign);
+                        break;
+                    case sign_parser::sign_type::minus:
+                        break;
                     }
                 }
             }
@@ -550,6 +558,9 @@ namespace lib2
                 case sign_parser::sign_type::plus:
                 case sign_parser::sign_type::space:
                     *--extra_begin = std::to_underlying(sign);
+                    break;
+                case sign_parser::sign_type::minus:
+                    break;
                 }
             }
 
@@ -557,14 +568,58 @@ namespace lib2
             str_fmt.fill  = fill;
             str_fmt.align = align;
             str_fmt.set_width(width);
-            
-            if (zero)
+
+            if (use_locale)
+            {
+                const auto& numpunct {std::use_facet<std::numpunct<char>>(ctx.locale())};
+                const auto grouping {numpunct.grouping()};
+                if (grouping.empty())
+                {
+                    str_fmt.format(std::string_view{extra_begin, std::ranges::end(buf)}, ctx);
+                }
+                else
+                {
+                    const auto thousands_sep {numpunct.thousands_sep()};
+                    std::string locale_str;
+                    auto p {std::ranges::end(buf)};
+                    std::size_t group_idx {0};
+
+                    while (p > extra_begin)
+                    {
+                        const signed char current_group_size = grouping[group_idx];
+                        if (current_group_size == std::numeric_limits<signed char>::max() || current_group_size <= 0)
+                        {
+                            while (p > extra_begin)
+                            {
+                                locale_str.push_back(*--p);
+                            }
+                            break;
+                        }
+
+                        for (std::size_t i {0}; i < current_group_size && p > extra_begin; ++i)
+                        {
+                            locale_str.push_back(*--p);
+                        }
+
+                        if (p > extra_begin)
+                        {
+                            locale_str.push_back(thousands_sep);
+                        }
+
+                        group_idx += group_idx + 1 < grouping.size();
+                    }
+
+                    std::ranges::reverse(locale_str);
+                    str_fmt.format(locale_str, ctx);
+                }
+            }
+            else if (zero)
             {
                 str_fmt.fill = '0';
                 const auto extra_size {static_cast<std::size_t>(begin - extra_begin)};
                 if (extra_size > 0)
                 {
-                    ctx.stream.write(extra_begin, extra_size);
+                    ctx.out.write(extra_begin, extra_size);
                     if (width > extra_size)
                     {
                         str_fmt.set_width(width - extra_size);
@@ -600,11 +655,10 @@ namespace lib2
                 }
             }
 
-            ctx.stream.write(std::string_view{begin, std::ranges::end(buf)});
+            ctx.out.write(std::string_view{begin, std::ranges::end(buf)});
         }
     };
 
-    export
     template<std::floating_point F>
     struct formatter<F> : public width_parser, public precision_parser
     {
@@ -714,6 +768,8 @@ namespace lib2
                 case sign_parser::sign_type::space:
                     *--extra_begin = std::to_underlying(sign);
                     break;
+                case sign_parser::sign_type::minus:
+                    break;
                 }
             }
 
@@ -728,7 +784,7 @@ namespace lib2
                 const auto extra_size {static_cast<std::size_t>(begin - extra_begin)};
                 if (extra_size > 0)
                 {
-                    ctx.stream.write(extra_begin, extra_size);
+                    ctx.out.write(extra_begin, extra_size);
                     if (width > extra_size)
                     {
                         str_fmt.set_width(width - extra_size);
@@ -746,11 +802,10 @@ namespace lib2
         {
             char buf[30];
             const auto ptr {to_chars(buf, std::ranges::end(buf), val)};
-            ctx.stream.write(std::string_view{buf, ptr});
+            ctx.out.write(std::string_view{buf, ptr});
         }
     };
 
-    export
     template<>
     struct formatter<const void*> : public width_parser
     {
@@ -802,15 +857,13 @@ namespace lib2
             auto begin {to_chars_base16(buf, std::ranges::end(buf), reinterpret_cast<std::uintptr_t>(value))};
             *--begin = 'x';
             *--begin = '0';
-            ctx.stream.write(std::string_view{begin, std::ranges::end(buf)});
+            ctx.out.write(std::string_view{begin, std::ranges::end(buf)});
         }
     };
 
-    export
     template<>
     struct formatter<void*> : public formatter<const void*> {};
 
-    export
     template<>
     struct formatter<const volatile void*> : public formatter<const void*>
     {
@@ -825,11 +878,9 @@ namespace lib2
         }
     };
 
-    export
     template<>
     struct formatter<volatile void*> : public formatter<const volatile void*> {};
 
-    export
     template<>
     struct formatter<std::nullptr_t> : public formatter<const void*>
     {
@@ -840,11 +891,10 @@ namespace lib2
 
         static void default_format(const std::nullptr_t value, format_context& ctx)
         {
-            ctx.stream.write("nullptr");
+            ctx.out.write("nullptr");
         }
     };
 
-    export
     template<>
     struct formatter<char> : public width_parser
     {
@@ -915,34 +965,34 @@ namespace lib2
                 switch (align)
                 {
                 case fill_align_parser::align_type::left:
-                    ctx.stream.put(value);
-                    ctx.stream.fill(fill, padding);
+                    ctx.out.put(value);
+                    ctx.out.fill(fill, padding);
                     break;
                 case fill_align_parser::align_type::right:
-                    ctx.stream.fill(fill, padding);
-                    ctx.stream.put(value);
+                    ctx.out.fill(fill, padding);
+                    ctx.out.put(value);
                     break;
                 case fill_align_parser::align_type::center:
                     {
                         const auto left_pad {padding / 2};
                         const auto right_pad {padding - left_pad};
 
-                        ctx.stream.fill(fill, left_pad);
-                        ctx.stream.put(value);
-                        ctx.stream.fill(fill, right_pad);
+                        ctx.out.fill(fill, left_pad);
+                        ctx.out.put(value);
+                        ctx.out.fill(fill, right_pad);
                     }
                     break;
                 }
             }
             else
             {
-                ctx.stream.put(value);
+                ctx.out.put(value);
             }
         }
 
         static void default_format(const char value, format_context& ctx)
         {
-            ctx.stream.put(value);
+            ctx.out.put(value);
         }
     };
 }

@@ -170,7 +170,7 @@ namespace lib2
         [[nodiscard]] constexpr std::strong_ordering operator()(const char a, const char b) const noexcept
         {
             const auto lower_a {tolower_ascii(a)};
-            const auto lower_b {toupper_ascii(b)};
+            const auto lower_b {tolower_ascii(b)};
             if (lower_a < lower_b)
             {
                 return std::strong_ordering::less;
@@ -226,6 +226,18 @@ namespace lib2
 
     export
     constexpr iequal_ascii_fn iequal_ascii {};
+
+    struct istarts_with_ascii_fn
+    {
+        [[nodiscard]] constexpr bool operator()(const std::string_view haystack, const std::string_view needle) const noexcept
+        {
+            return haystack.size() >= needle.size() &&
+                   std::ranges::equal(haystack.substr(0, needle.size()), needle, {}, tolower_ascii, tolower_ascii);
+        }
+    };
+
+    export
+    constexpr istarts_with_ascii_fn istarts_with_ascii {};
 
     struct icontains_ascii_fn
     {
