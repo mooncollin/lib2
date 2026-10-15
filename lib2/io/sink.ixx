@@ -116,7 +116,7 @@ namespace lib2::io
         constexpr void write(const std::span<const char>) noexcept {}
         constexpr void fill(const char, const std::size_t) noexcept {}
     };
-    static_assert(sink<size_sink>);
+    static_assert(sink<null_sink>);
 
     export
     struct throwing_sink
@@ -127,5 +127,5 @@ namespace lib2::io
         [[noreturn]] constexpr void write(const std::span<const char>) { throw std::runtime_error{"throwing_sink"}; }
         [[noreturn]] constexpr void fill(const char, const std::size_t) { throw std::runtime_error{"throwing_sink"}; }
     };
-    static_assert(sink<size_sink>);
+    static_assert(sink<throwing_sink>);
 }

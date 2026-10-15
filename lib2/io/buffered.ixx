@@ -239,7 +239,10 @@ namespace lib2::io
         {
             if (pos == size)
             {
-                refill();
+                if (!refill())
+                {
+                    return {};
+                }
             }
 
             return storage.data()[pos++];
@@ -260,7 +263,7 @@ namespace lib2::io
             {
                 if (n < storage.capacity())
                 {
-                    refill();
+                    n = std::min(refill(), n);
                     std::copy_n(storage.data() + pos, n, buf);
                     pos += n;
                     read_amount += n;
@@ -306,10 +309,11 @@ namespace lib2::io
             , pos{0}
             , size{0} {}
 
-        constexpr void refill()
+        constexpr std::size_t refill()
         {
             size = source.read(storage.data(), storage.capacity());
             pos = 0;
+            return size;
         }
 
         Storage storage;
